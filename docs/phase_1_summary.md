@@ -24,8 +24,8 @@ Assumption files: `assumptions/fixture.yaml`, `assumptions/basis_2022.yaml`.
 
 ## Key numbers (fixture basis, F1)
 - First-year profit −518.60 (commission + acquisition): new-business strain.
-- Reserves zero for t = 1–3, peak ≈ 1,262–1,361 around t = 13–15, back to 0 at maturity (hump shape).
-- NPV with reserves 408.17 vs higher without reserves: the cost of holding reserves earning 3% against an 8% RDR.
+- Reserves zero for t = 1–3, peak 1,359.90 at t = 13 (start of policy year 14), back to 0 at maturity (hump shape).
+- NPV 408.17 with reserves vs 547.01 without: the 138.84 difference is the cost of holding reserves earning 3% against an 8% RDR.
 - MP premium 426.97 vs LTA 579.28 for the same life: ≈ 26% cheaper because cover runs off.
 
 ## Still to do for Phase 1 acceptance
