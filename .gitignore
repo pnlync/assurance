@@ -1,0 +1,27 @@
+# Private planning notes (guides, CV and interview prep) — never publish
+private_notes/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data: raw downloads are third-party files (CMI, CSO, EIOPA) — fetch per data/raw/README.md
+data/raw/*
+!data/raw/README.md
+# Processed data is regenerated from raw by the parsers and simulator
+data/processed/*
+!data/processed/.gitkeep
+
+# Excel lock files
+~$*.xlsx

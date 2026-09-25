@@ -1,0 +1,28 @@
+[project]
+name = "lifemodel"
+version = "0.1.0"
+description = "Life protection model: pricing, experience, Solvency II and IFRS 17 for a synthetic Irish term-assurance book"
+authors = [
+    { name = "pnlync", email = "pnlync@gmail.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "pyyaml>=6.0.3",
+    "scipy>=1.18.1",
+    "xlrd>=2.0.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.3,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+    "pytest>=9.1.1",
+]
