@@ -1,0 +1,31 @@
+# Best-estimate basis at 31 Dec 2022 (SPEC §4.1–§4.3). Pricing, Solvency II and (without overhead) IFRS 17.
+name: basis_2022
+mortality:
+  table: cmi00             # CMI 00 series temporary-assurance tables TMN00/TMS00/TFN00/TFS00 (data/processed/mortality_cmi00.csv)
+  # Level multiplier X = (1 - improvement_rate)^(issue_year - table_centre_year). Documented judgement, not calibrated (SPEC §4.1).
+  improvement_rate: 0.015  # illustrative average annual mortality improvement since the CMI 00 investigation
+  table_centre_year: 2000.5  # centre of the 1999-2002 investigation period
+  issue_year: 2023
+lapse:
+  by_policy_year: [0.06, 0.09, 0.08, 0.07, 0.06]   # policy years 1–5
+  ultimate: 0.05                                   # policy year 6 onwards; 0 in the final year
+  multiplier: 1.0
+expenses:
+  acquisition: 250.0       # at t = 0
+  maintenance: 60.0        # p.a. at every t
+  overhead: 15.0           # p.a. at every t, non-attributable (excluded under IFRS 17)
+  claim: 250.0             # per death
+  inflation: 0.025
+commission:
+  first_year: 1.0          # share of the annual premium, paid at t = 0
+premium:
+  policy_fee: 60.0
+reserving:                 # SPEC §4.2 — profit test only
+  mortality_multiplier: 1.10
+  include_lapses: false
+  interest: 0.025
+pricing:                   # SPEC §4.3
+  earned_rate: 0.03
+  risk_discount_rate: 0.08
+  target_margin: 0.10
+  reference_sa: {LTA: 250000.0, MP: 300000.0}

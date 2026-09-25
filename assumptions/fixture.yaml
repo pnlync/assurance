@@ -1,0 +1,33 @@
+# Golden-test fixture basis (SPEC §13.3). Everything except mortality follows §4.1–§4.3.
+name: fixture
+mortality:
+  table: fixture          # q_x = base_q × growth^(x − base_age), × female / smoker factors, capped at 1
+  base_q: 0.0005
+  base_age: 30
+  growth: 1.08
+  female_factor: 0.70
+  smoker_factor: 1.80
+  multiplier: 1.0
+lapse:
+  by_policy_year: [0.06, 0.09, 0.08, 0.07, 0.06]   # policy years 1–5
+  ultimate: 0.05                                   # policy year 6 onwards; 0 in the final year
+  multiplier: 1.0
+expenses:
+  acquisition: 250.0       # at t = 0
+  maintenance: 60.0        # p.a. at every t
+  overhead: 15.0           # p.a. at every t, non-attributable (excluded under IFRS 17)
+  claim: 250.0             # per death
+  inflation: 0.025
+commission:
+  first_year: 1.0          # share of the annual premium, paid at t = 0
+premium:
+  policy_fee: 60.0
+reserving:                 # SPEC §4.2 — profit test only
+  mortality_multiplier: 1.10
+  include_lapses: false
+  interest: 0.025
+pricing:                   # SPEC §4.3
+  earned_rate: 0.03
+  risk_discount_rate: 0.08
+  target_margin: 0.10
+  reference_sa: {LTA: 250000.0, MP: 300000.0}
