@@ -1,6 +1,7 @@
 # Life Protection Model — Build Specification
 
-Version 1.0 · 24 Sep 2026 · Owner: Tom Zhang
+Version 1.1 · 25 Sep 2026 · Owner: Tom Zhang
+Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
 Audience: the AI coding agent that implements the project, and the owner who reviews it.
 Companion: the owner's Chinese guide ("Life Protection Project Guide") explains the concepts; this file defines exactly what to build.
 
@@ -80,7 +81,7 @@ The owner downloads these manually into `data/raw/`. The agent writes the parser
 | `TMN00.xls`, `TMS00.xls`, `TFN00.xls`, `TFS00.xls` | IFoA, CMI "00" series tables (temporary assurances; male/female × non-smoker/smoker) | base mortality |
 | `cso_ilt17.xlsx` | CSO Irish Life Tables No. 17 (2015–2017) | comparison chart only |
 | `eiopa_rfr_2022-12.*`, `2023-12`, `2024-12`, `2025-12` | EIOPA monthly risk-free rate term structures | discount curves |
-| `market_quotes.csv` | owner collects from Irish comparison websites | mortality-level calibration (§7.1) |
+| `market_quotes.csv` | owner collects from Irish comparison websites | premium reasonableness check (§7.1) |
 
 Parsing:
 - CMI 00: store a tidy `data/processed/mortality_cmi00.csv` (columns: table, age, duration, qx). If a table provides select rates (durations 0…s−1), use them by duration and the ultimate rate from duration s; otherwise use the ultimate rate for all durations. Record which in the assumption register.
@@ -92,7 +93,10 @@ Parsing:
 ## 4. Assumptions (`assumptions/*.yaml`)
 
 **4.1 Best-estimate basis `basis_2022.yaml`** — used for pricing, Solvency II and (without overhead) IFRS 17, until the review at 31 Dec 2025.
-- Mortality: CMI 00 table by sex × smoker × level multiplier X. X is calibrated in Phase 1 (§7.1); placeholder 0.60.
+- Mortality: CMI 00 table by sex × smoker × level multiplier X = (1 − r)^(2023 − 2000.5), stored in the yaml as its inputs, not as a fitted number:
+  - 2000.5 = centre of the 1999–2002 investigation period underlying the CMI 00 series;
+  - r = 1.5% p.a. = illustrative average mortality improvement from then to issue (judgement; covers UK/Irish improvement over the period, insured-vs-CMI-population differences are not separately modelled). Gives X ≈ 0.712.
+  - Status in the assumption register: external base table + documented judgement, not calibrated. Market quotes do not set X (§7.1).
 - Lapse by policy year 1, 2, 3, 4, 5: 6%, 9%, 8%, 7%, 6%; 5% thereafter; 0 in the final year. Same for both products and channels.
 - Expenses: acquisition 250 at t = 0; maintenance 60 p.a. at every t; overhead 15 p.a. at every t (non-attributable); claim expense 250 per death; inflation 2.5% p.a.
 - Commission: 100% of the annual premium at t = 0; nothing thereafter.
@@ -167,7 +171,7 @@ Sum assured schedule: LTA S_t = SA. MP S_t = SA × (1 − v^(n−t)) / (1 − v^
 
 ## 7. Pricing (`src/lifemodel/pricing.py`)
 
-**7.1 Mortality-level calibration.** For each row of `market_quotes.csv`, compute the model's monthly premium (annual / 12) at the 10% target margin for an LTA of that age, sex, smoker status and SA. Choose X on a grid 0.30–1.00 (step 0.01) minimising Σ ((model − mid) / mid)², mid = (monthly_low + monthly_high) / 2. Output the comparison table.
+**7.1 Market reasonableness check** (does not change the basis). For each row of `market_quotes.csv`, compute the model's monthly premium (annual / 12) at the 10% target margin for an LTA of that age, sex, smoker status and SA, using X from §4.1. Report model, low, high, mid = (monthly_low + monthly_high) / 2, model / mid, and whether model lies within [low, high]. Also report, as a diagnostic only, the implied X that would minimise Σ ((model − mid) / mid)² on a grid 0.30–1.00 (step 0.01); it is never written to the basis. Rationale (state it in the phase summary): retail premiums also reflect underwriting, commission, expenses, margins and insurer strategy, so a quote cannot identify mortality uniquely. Flag for the owner if any model / mid lies outside 0.5–2.0.
 
 **7.2 Rate table.** For each cell (product, sex, smoker, issue age 25–55), solve the rate so that the profit margin of a reference policy equals 10% (LTA SA 250,000; MP initial SA 300,000), fee 60. Premium of each policy = rate(cell) × SA / 1000 + 60. Use `scipy.optimize.brentq` with xtol 1e-12.
 
@@ -243,7 +247,7 @@ Assert 0.3958 ≤ RM_new / RM_old ≤ 0.7917.
 
 ## 10. IFRS 17 (`src/lifemodel/ifrs17.py`)
 
-**10.1 Level of aggregation.** One portfolio, annual cohort 2023. Cells = product × sex × smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups:
+**10.1 Level of aggregation.** Two portfolios — LTA and MP (different products, managed separately; IFRS 17 para 14) — each with one annual cohort, 2023. Within each portfolio, cells = sex × smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups are formed within each portfolio (so up to 6 groups: LTA-G1…G3, MP-G1…G3):
 - G1 onerous: BE_cell + RA_cell > 0 at initial recognition;
 - G2 no significant possibility of becoming onerous: not G1, and BE_cell under the combined stress (q × 1.15 and w × 1.5) + RA_cell < 0;
 - G3 remaining.
@@ -266,7 +270,7 @@ Assert 0.3958 ≤ RM_new / RM_old ≤ 0.7917.
 
 **10.6 Onerous-premium scenario.** Solve the uniform premium factor f (P → f·P, fee included) at which the total CSM_0 of G2 + G3 becomes 0.
 
-**10.7 Outputs.** Group summary (count, PV premiums, BE, RA, CSM_0, LC_0); RA by percentile and the CoC comparison; expected CSM release pattern by product; the onerous-premium factor.
+**10.7 Outputs.** Group summary by portfolio (count, PV premiums, BE, RA, CSM_0, LC_0); RA by percentile and the CoC comparison; expected CSM release pattern by product; the onerous-premium factor.
 
 ---
 
@@ -368,7 +372,7 @@ Cash-flow experience of the year (P&L): claims A − E = Σ_{D}(S_k + CE_k) − 
 - BEL at t = 0 = −1316.8596
 - RM_old = 822.3561; RM_new = 526.5710; ratio = 0.64031996 = identity value
 - IFRS 17 with a fixed RA of 0.25 × SCR_life(0) = 388.5030 (test only), locked-in curve flat 3%: FCF_0 = −1263.6512; CSM_0 = 1263.6512; CU_0 = 500,000.0000, CU_1 = 461,768.7943, CU_19 = 87,114.5756; CSM release in years 1, 2, 3 = 133.6955, 127.1770, 116.9930; closing CSM after year 20 = 0; total releases = 1607.9465
-- Monte Carlo RA (§10.3, IFRS basis, F1 + F2 as one group): reference values from 200,000 scenarios: RA_65 ≈ 134.5, RA_75 ≈ 233.5, RA_85 ≈ 357.5. With 10,000 scenarios RA_75 must lie within ±5% of 233.5.
+- Monte Carlo RA (§10.3, IFRS basis, F1 + F2 as one group — a test construct only; in the model they sit in different portfolios): reference values from 200,000 scenarios: RA_65 ≈ 134.5, RA_75 ≈ 233.5, RA_85 ≈ 357.5. With 10,000 scenarios RA_75 must lie within ±5% of 233.5.
 
 **13.4 Excel reconciliation.** The owner's Excel single-policy model of F1 (and later of a real-basis reference policy) must agree with Python to within €0.01 on premium, ℓ_t, V_t, reserves, profit vector, NPV, and the t = 0 Solvency II losses.
 
@@ -378,8 +382,8 @@ Cash-flow experience of the year (P&L): claims A − E = Σ_{D}(S_k + CE_k) − 
 
 | Phase | Build | Accept when |
 |---|---|---|
-| 0 Setup | repo, environment (Python 3.11, numpy, pandas, scipy, matplotlib, openpyxl, pyarrow, pyyaml, pytest), parsers, fixture basis | parsers produce tidy CSVs; fixture unit tests pass |
-| 1 Engine + pricing | §5, §6, §7 | F1/F2 golden values for ℓ, V, reserves, profit vector, premium pass; forward = backward; calibration table; rate table; charts 1–2; Excel reconciliation < €0.01 |
+| 0 Setup | repo, environment (Python 3.12, numpy, pandas, scipy, matplotlib, openpyxl, pyarrow, pyyaml, pytest), parsers, fixture basis | parsers produce tidy CSVs; fixture unit tests pass |
+| 1 Engine + pricing | §5, §6, §7 | F1/F2 golden values for ℓ, V, reserves, profit vector, premium pass; forward = backward; market reasonableness table; rate table; charts 1–2; Excel reconciliation < €0.01 |
 | 2 Experience + Solvency II | §8, §9 | in-force identity; A/E self-test; `basis_2025.yaml` written with reasons; F1/F2/F3 SII golden values and RM identity pass; charts 3, 4, 6 |
 | 3 IFRS 17 + AoC | §10, §11, §12 | F3 CSM golden values; MC RA within tolerance; all walks reconcile; core result table; charts 5, 7, 8 |
 | 4 Packaging | README, `report/technical_note.pdf`, project web page | every claim traceable to a test or output file |
