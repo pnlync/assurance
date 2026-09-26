@@ -27,3 +27,10 @@ dev = [
     "pycel>=1.0b30",
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # pycel (test-only Excel evaluator) uses ast APIs deprecated in Python 3.12; not our code
+    "ignore::DeprecationWarning:pycel.*",
+    "ignore:Attribute s is deprecated:DeprecationWarning",
+]
