@@ -19,6 +19,7 @@ Life protection actuarial model (portfolio project). **SPEC.md is the build spec
 - Python 3.12 via uv (`uv sync`, `uv run pytest`). (uv's 3.11 build is killed by macOS on this machine.)
 - GitHub: git@github.com:pnlync/assurance.git (SPEC Appendix A calls the repo `life-protection-model`; the package is `lifemodel`).
 - Raw data is downloaded manually into `data/raw/` (see its README) and is not committed.
+- Rebuild everything: `uv run python -m lifemodel.parsers` then `uv run python -m lifemodel.build_all` (~1 min; phases 1–3, Excel, site assets, technical-note PDF via headless Chrome). `site/` deploys to GitHub Pages (gh-pages branch) on push.
 
 ## Decision authority
 The owner has given the agent full discretion over design decisions (25 Sep 2026). Make the call, record it in SPEC.md (bump the version line) or the phase summary, and tell the owner what was decided and why. Still never alter golden values in §13.3.

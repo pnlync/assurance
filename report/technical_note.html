@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Life Protection Model — Technical Note</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root { --ink: #0b0b0b; --ink-2: #52514e; --rule: #dcdbd6; --accent: #2a78d6; --panel: #f4f3ef; }
+  html { background: #fff; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9.6pt; line-height: 1.45; color: var(--ink); margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 4pt; letter-spacing: -0.2pt; }
+  h2 { font-size: 13pt; margin: 16pt 0 6pt; padding-top: 4pt; border-top: 1.5pt solid var(--ink); break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 10pt 0 4pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  .sub { color: var(--ink-2); font-size: 10pt; margin-bottom: 10pt; }
+  .question { background: var(--panel); border-left: 3pt solid var(--accent); padding: 7pt 10pt; font-size: 10.5pt; margin: 10pt 0; }
+  .flag { font-size: 8.6pt; color: var(--ink-2); border: 0.6pt solid var(--rule); padding: 5pt 8pt; margin: 8pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt; font-size: 8.6pt; break-inside: avoid; }
+  th, td { border-bottom: 0.5pt solid var(--rule); padding: 2.6pt 4pt; text-align: left; vertical-align: top; }
+  th { border-bottom: 1pt solid var(--ink); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  figure { margin: 6pt 0 10pt; break-inside: avoid; }
+  figure img { width: 100%; }
+  figcaption { font-size: 8.4pt; color: var(--ink-2); margin-top: 2pt; }
+  ul, ol { margin: 0 0 6pt 14pt; padding: 0; }
+  li { margin-bottom: 2pt; }
+  code, .f { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.4pt; }
+  .f { display: block; background: var(--panel); padding: 5pt 8pt; margin: 4pt 0 7pt; white-space: pre-wrap; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+  .page-break { break-before: page; }
+  .findings li { margin-bottom: 4pt; }
+</style>
+</head>
+<body>
+
+<h1>Life Protection Model</h1>
+<p class="sub">Pricing, experience analysis, Solvency II and IFRS 17 for a synthetic Irish term-assurance book · Technical note · Tom Zhang · 2026</p>
+
+<div class="question"><strong>Question.</strong> How should an Irish life insurer price a term-assurance book, monitor emerging mortality and lapse experience, and translate assumption changes into profitability, IFRS 17 earnings and Solvency II capital?</div>
+
+<div class="flag"><strong>Status of the data.</strong> Real: CMI 00 series mortality tables (IFoA), CSO Irish Life Tables No. 17, EIOPA euro risk-free curves at 31 December 2022–2025, six unisex market quotes from bonkers.ie (September 2026). Synthetic or illustrative: the 50,000 policies, the 2023–25 experience (simulated from a hidden "truth" basis), and the lapse, expense and commission assumptions. The work demonstrates method and reasoning; it is not a calibrated view of any insurer.</div>
+
+<h2>1. Summary</h2>
+<ol class="findings">
+  <li><strong>Unisex pricing creates sex-mix risk.</strong> Rates are priced on a pooled margin for 60% male new business. At the priced rate a 35-year-old man earns about 4% against the 10% target; if the mix reaches 70% male, the 50-year-old non-smoker cell earns 7.1%.</li>
+  <li><strong>Fixed costs dominate small policies.</strong> With the €60 fee, a €50k level-term policy has a margin of −54% and break-even is near €177k; a fee of about €150 would flatten margins across sizes. The only IFRS 17 onerous groups are these small-cover, young cells.</li>
+  <li><strong>Mortality experience is not yet credible; lapse experience is.</strong> 75 deaths (A/E 115%, 95% CI 89%–141%, Z = 0.26) move mortality by only +4%; 12,624 lapses (A/E 121% ± 2%) are adopted in full. Brokers lapse at 133% of basis, direct business at 93%.</li>
+  <li><strong>The 2025 assumption review</strong> raises Solvency II BEL by €6.7m, cuts the CSM by €6.1m (−16%) and leaves current premiums at 96.6% of the new requirement; 2026 rates rise 2–8%.</li>
+  <li><strong>The 2027 risk-margin reform</strong> cuts the risk margin at issue by 36% (level term 38%, mortgage protection 35%) and raises day-one own funds from €23.7m to €33.0m.</li>
+</ol>
+
+<h2>2. Products, book and timeline</h2>
+<p><strong>Level term assurance (LTA)</strong> pays a fixed sum on death within 20 years. <strong>Mortgage protection (MP)</strong> pays the outstanding balance of a 20-year repayment mortgage at 4%, <span class="f" style="display:inline;padding:0 3pt">S_t = SA·(1 − v^(20−t)) / (1 − v^20)</span>; Irish law generally requires it on owner-occupied mortgages (Consumer Credit Act 1995, s.126). Neither has a surrender value.</p>
+<table>
+  <tr><th>Feature</th><th>Setting</th><th>Feature</th><th>Setting</th></tr>
+  <tr><td>Policies</td><td>50,000, issued 1 Jan 2023</td><td>Products</td><td>LTA / MP 50% each, 20-year term</td></tr>
+  <tr><td>Issue age</td><td>25–55 uniform</td><td>Sex / smoker</td><td>55% male (anti-selected mix) / 20% smoker</td></tr>
+  <tr><td>Channel</td><td>broker 70%, direct 30%</td><td>Sum assured</td><td>LTA lognormal, median €250k (€50k–€1m); MP loan median €300k</td></tr>
+</table>
+<p>Timeline: priced at end-2022 on <code>basis_2022</code>; experience 2023–25 simulated; experience study and assumption review at 31 Dec 2025 produce <code>basis_2025</code>; valuations at issue and each year-end on the EIOPA curve of that date.</p>
+
+<h2>3. Assumptions</h2>
+<table>
+  <tr><th>Item</th><th>basis_2022</th><th>basis_2025</th><th>Status</th></tr>
+  <tr><td>Mortality</td><td>CMI 00 (TMN/TMS/TFN/TFS, 5-year select) × X, X = 0.985<sup>22.5</sup> = 0.712</td><td>× 1.040</td><td>External table + documented improvement judgement (1.5% p.a. from 2000.5 to 2023); experience-credibility update</td></tr>
+  <tr><td>Lapse</td><td>6, 9, 8, 7, 6% in years 1–5, 5% after, 0 in the last year</td><td>× 1.206 at all durations</td><td>Illustrative; judgement that the early excess persists</td></tr>
+  <tr><td>Expenses</td><td>acquisition €250; maintenance €60; overhead €15 (not IFRS-attributable); claim €250; inflation 2.5%</td><td>maintenance €63.60</td><td>Illustrative; expense investigation</td></tr>
+  <tr><td>Commission / fee</td><td colspan="2">100% of first-year premium; policy fee €60 p.a.</td><td>Illustrative</td></tr>
+  <tr><td>Pricing</td><td colspan="2">earned 3%, RDR 8%, target margin 10%, unisex at 60% male</td><td>Illustrative; unisex required by law</td></tr>
+  <tr><td>Reserving</td><td colspan="2">mortality 110%, no lapses, 2.5%, zeroised</td><td>Prudent illustrative basis</td></tr>
+  <tr><td>Truth (simulator only)</td><td colspan="2">mortality 110%; lapse 120% × channel (broker 1.10, direct 0.767); maintenance 106%</td><td>Hidden from the study</td></tr>
+</table>
+<p><strong>Mortality level.</strong> The six quotes imply X ≈ 0.45, but even at that level the residual changes sign by age and smoker status (30 NS still 35% dear, 50 S 16% cheap). Retail premiums also carry commission, expense loadings, margins and newer reinsurer-backed mortality, so they cannot identify mortality alone; they are used as a reasonableness check (model 1.26–1.58 × market mid).</p>
+
+<h2>4. Methods</h2>
+<h3>4.1 Cash-flow engine</h3>
+<p>Annual steps. In policy year t: premium, commission and expenses at t; death (probability q_t) paid with claim expense at t+1; survivors lapse (w_t) at t+1. In-force <code>ℓ_{t+1} = ℓ_t(1 − q_t)(1 − w_t)</code>. The value of one policy in force at t, positive = liability:</p>
+<span class="f">V_t = −P + comm_t + exp_t + v_t · [ q_t (S_t + CE_t) + (1 − q_t)(1 − w_t) V_{t+1} ],   V_20 = 0</span>
+<p>One backward pass gives V at every duration, which Solvency II needs for SCR run-off and IFRS 17 for later valuations. The whole book (50,000 × 20) is valued in about 0.02 s with numpy.</p>
+
+<h3>4.2 Pricing and profit testing</h3>
+<p>Reserves are prospective on the reserving basis, floored at zero. Profit vector and margin:</p>
+<span class="f">Pr_t = (_tV + P − comm_t − exp_t)(1 + i) − q_t(S_t + CE_t) − (1 − q_t)(1 − w_t) _{t+1}V
+Π_t = ℓ_t Pr_t
+margin = Σ Π_t (1+RDR)^−(t+1) / Σ ℓ_t P (1+RDR)^−t</span>
+<p><strong>Unisex rates.</strong> Since 21 Dec 2012 EU insurers may not price by sex (CJEU C-236/09). For each cell (product × smoker × age) the rate solves a pooled margin of 10%: <code>[m·NPV_M + (1−m)·NPV_F] / [m·EPV_M + (1−m)·EPV_F]</code>, m = 60% male. Premium = rate × SA/1000 + €60.</p>
+
+<h3>4.3 Experience study</h3>
+<p>Each policy-year draws death then lapse from the truth basis. The study sees only the data and <code>basis_2022</code>: A/E by count, amount and lapse across nine cuts; 95% intervals <code>A/E ± 1.96√A/E</code> (amount basis uses Σ q(1−q)S²); limited-fluctuation credibility <code>Z = min(1, √(A/1082.41))</code>; new multiplier <code>old × (1 + Z(A/E − 1))</code>.</p>
+
+<h3>4.4 Solvency II</h3>
+<p>BEL = Σ V on the EIOPA curve (no VA), full expenses. Per-policy stresses at every future time, floored at 0: mortality ×1.15; lapse up ×1.5 (only where V &lt; 0), down −min(50%, 20pp) (only where V &gt; 0), mass 40% of −V; expenses ×1.10 and inflation +1pp; catastrophe +0.0015 for 12 months. SCR_life(j) = √(xᵀCx) with the Art. 136 correlations. Risk margin:</p>
+<span class="f">RM_current = 6% Σ SCR(j) DF(j+1)          RM_2027 = 4.75% Σ max(0.96^j, 0.5) SCR(j) DF(j+1)
+RM_2027 / RM_current = (19/24) Σ π_j max(0.96^j, 0.5),  π_j ∝ SCR(j) DF(j+1)   ⇒ ratio ∈ [0.396, 0.792]</span>
+
+<h3>4.5 IFRS 17 (general measurement model)</h3>
+<ul>
+  <li><strong>Grouping.</strong> Portfolios LTA and MP, cohort 2023; cells smoker × age band × SA band; G1 onerous if BE + RA &gt; 0, G2 if still profitable under q×1.15 and w×1.5, else G3. Sex is not split (para 20: the difference exists only because law constrains pricing; permitted, not required; not by analogy).</li>
+  <li><strong>RA.</strong> 10,000 scenarios of correlated mean-one lognormal multipliers on mortality, lapse and attributable expenses, each with its 99.5th percentile equal to the Solvency II stress; RA = 75th percentile − mean of the group PV. Values are exact via two model points per (product, sex, smoker, age), because every cash flow is affine in SA.</li>
+  <li><strong>CSM.</strong> CSM₀ = max(0, −FCF₀); accretion at the locked-in (31 Dec 2022) forward rate; future-service changes measured at locked-in rates adjust the CSM; release by coverage units (expected SA in force, undiscounted). Rate changes go to insurance finance expense, never to the CSM.</li>
+</ul>
+
+<h3>4.6 Analysis of change</h3>
+<p>Each year changes one thing at a time and revalues: S0 opening → S1 expected roll-forward (identity <code>S1 = (S0 − X)/v − EC</code>) → S2 actual deaths → S3 actual lapses → S4 new assumptions → S5 year-end curve. The same steps run for Solvency II BEL (with overhead), IFRS 17 BE (without) at current and at locked-in rates, the RA at four points, and the CSM.</p>
+
+<h2>5. Results</h2>
+<h3>5.1 Pricing</h3>
+<table>
+  <tr><th>Unisex rate per €1,000</th><th class="n">Age 25</th><th class="n">35</th><th class="n">45</th><th class="n">55</th></tr>
+  <tr><td>LTA non-smoker / smoker</td><td class="n">0.72 / 0.94</td><td class="n">1.04 / 1.69</td><td class="n">2.22 / 4.49</td><td class="n">6.15 / 12.94</td></tr>
+  <tr><td>MP non-smoker / smoker</td><td class="n">0.54 / 0.68</td><td class="n">0.71 / 1.00</td><td class="n">1.24 / 2.31</td><td class="n">3.12 / 6.69</td></tr>
+</table>
+<div class="two">
+  <figure><img src="../outputs/charts/02b_margin_by_sa.png" alt="Margin by sum assured with and without the fee"><figcaption>Margin by sum assured, LTA 35 NS. The €60 fee helps but does not cover per-policy costs.</figcaption></figure>
+  <figure><img src="../outputs/charts/02c_sex_mix_margin.png" alt="Margin against male share"><figcaption>Unisex pricing: margin if the sex mix differs from the priced 60% male.</figcaption></figure>
+</div>
+<table>
+  <tr><th>Margin at the priced premium</th><th class="n">Base</th><th class="n">Mort +10%</th><th class="n">Lapse +20%</th><th class="n">Lapse −20%</th><th class="n">Exp +10%</th><th class="n">Earned −1pp</th><th class="n">RDR +2pp</th></tr>
+  <tr><td>LTA 35 NS</td><td class="n">10.0%</td><td class="n">6.7%</td><td class="n">9.8%</td><td class="n">10.1%</td><td class="n">6.4%</td><td class="n">9.0%</td><td class="n">8.8%</td></tr>
+  <tr><td>LTA 50 NS</td><td class="n">10.0%</td><td class="n">5.3%</td><td class="n">11.4%</td><td class="n">8.4%</td><td class="n">8.8%</td><td class="n">6.9%</td><td class="n">7.6%</td></tr>
+  <tr><td>MP 35 NS</td><td class="n">10.0%</td><td class="n">7.1%</td><td class="n">8.7%</td><td class="n">11.3%</td><td class="n">5.7%</td><td class="n">9.6%</td><td class="n">8.1%</td></tr>
+</table>
+<p>Lapses cut in both directions: they destroy future profit on MP, but on LTA at 50 higher lapses raise the margin, because late durations are loss-making and reserves are released on lapse. LTA reserves are hump-shaped (peak ≈ €860 at year 14 for the reference life); MP reserves are zero throughout.</p>
+
+<h3>5.2 Experience 2023–25</h3>
+<div class="two">
+  <figure><img src="../outputs/charts/03_mortality_ae_segments.png" alt="Mortality A/E by segment"><figcaption>Mortality A/E with 95% intervals: 75 deaths are too few to confirm the true 110%.</figcaption></figure>
+  <figure><img src="../outputs/charts/04_lapse_ae_duration_channel.png" alt="Lapse A/E by year and channel"><figcaption>Lapse A/E by policy year and channel: tight intervals, broker business well above basis.</figcaption></figure>
+</div>
+<p>The study recovers the lapse truth (A/E 121% against 120%) and points in the right direction on mortality (115% against 110%) but can adopt only a quarter of it. The unrecognised excess reappears as claims experience losses (€1.6m in each of 2024 and 2025). At 25–35 deaths a year, full credibility would take decades — why insurers use reinsurer and industry data.</p>
+
+<h3>5.3 Solvency II</h3>
+<table>
+  <tr><th>At issue, €m</th><th class="n">BEL</th><th class="n">Life SCR</th><th class="n">RM current</th><th class="n">RM 2027</th><th class="n">Cut</th><th class="n">Own funds current → 2027</th></tr>
+  <tr><td>Level term</td><td class="n">−31.5</td><td class="n">28.1</td><td class="n">16.0</td><td class="n">10.0</td><td class="n">37.5%</td><td class="n">15.5 → 21.5</td></tr>
+  <tr><td>Mortgage protection</td><td class="n">−17.8</td><td class="n">21.6</td><td class="n">10.4</td><td class="n">6.7</td><td class="n">35.2%</td><td class="n">7.4 → 11.1</td></tr>
+  <tr><td>Total</td><td class="n">−49.3</td><td class="n">49.4</td><td class="n">25.6</td><td class="n">16.3</td><td class="n">36.3%</td><td class="n">23.7 → 33.0</td></tr>
+</table>
+<figure><img src="../outputs/charts/06_scr_and_risk_margin.png" alt="SCR by risk, run-off and risk margin"><figcaption>Life SCR by risk (mass lapse binds the lapse module), projected run-off, and risk margin under both rules.</figcaption></figure>
+<p>The BEL is negative: expected premiums exceed claims and costs, so Solvency II recognises the future profit at once — which is exactly what a mass lapse would destroy. SCR peaks in year 1 because acquisition costs are then sunk and the profit at risk is largest. Mortgage protection gains less from the reform because its SCR runs off faster and the reform discounts distant capital most.</p>
+
+<h3>5.4 IFRS 17</h3>
+<table>
+  <tr><th>Initial recognition, €m</th><th class="n">Policies</th><th class="n">BE</th><th class="n">RA 75%</th><th class="n">CSM</th><th class="n">Loss comp.</th></tr>
+  <tr><td>LTA-G2 / G3 / G1</td><td class="n">23,035 / 1,254 / 933</td><td class="n">−35.53 / −0.14 / −0.01</td><td class="n">3.81 / 0.06 / 0.03</td><td class="n">31.71 / 0.08 / 0</td><td class="n">0 / 0 / 0.02</td></tr>
+  <tr><td>MP-G2 / G3 / G1</td><td class="n">23,781 / 407 / 590</td><td class="n">−21.89 / −0.08 / −0.01</td><td class="n">2.92 / 0.03 / 0.02</td><td class="n">18.97 / 0.05 / 0</td><td class="n">0 / 0 / 0.02</td></tr>
+  <tr><td>Total</td><td class="n">50,000</td><td class="n">−57.65</td><td class="n">6.88</td><td class="n">50.81</td><td class="n">0.04</td></tr>
+</table>
+<div class="two">
+  <figure><img src="../outputs/charts/07_csm_release_lta_vs_mp.png" alt="CSM release pattern"><figcaption>Mortgage protection releases 46% of its CSM in five years, level term 31%.</figcaption></figure>
+  <div>
+    <p>RA at 65 / 75 / 85%: €3.9m / €6.9m / €10.8m. A 6% cost-of-capital RA would be €26.6m — beyond every simulated scenario — because the SCR includes mass lapse and catastrophe and charges 99.5% capital every year, while the Monte Carlo covers only level uncertainty. The choice of method alone changes the RA about fourfold.</p>
+    <p>Premiums would have to fall 19% before the profitable groups had no CSM left.</p>
+  </div>
+</div>
+
+<h3>5.5 Analysis of change and the core result table</h3>
+<figure><img src="../outputs/charts/08_aoc_waterfall_2025.png" alt="2025 analysis of change waterfalls"><figcaption>2025: Solvency II BEL and IFRS 17 CSM. Grey steps are expected; coloured steps are experience, assumptions and economics.</figcaption></figure>
+<table>
+  <tr><th>€m</th><th class="n">2023</th><th class="n">2024</th><th class="n">2025</th></tr>
+  <tr><td>SII BEL: lapse experience</td><td class="n">+1.15</td><td class="n">+1.02</td><td class="n">+0.72</td></tr>
+  <tr><td>SII BEL: assumption change / economic</td><td class="n">0 / −0.06</td><td class="n">0 / +0.36</td><td class="n">+6.76 / −2.30</td></tr>
+  <tr><td>CSM: lapse experience / assumption change</td><td class="n">−1.27 / 0</td><td class="n">−1.15 / 0</td><td class="n">−0.85 / −6.99</td></tr>
+  <tr><td>CSM release / closing CSM</td><td class="n">5.27 / 46.02</td><td class="n">4.95 / 41.61</td><td class="n">3.93 / 31.59</td></tr>
+  <tr><td>Claims actual − expected (P&amp;L)</td><td class="n">−1.24</td><td class="n">+1.58</td><td class="n">+1.61</td></tr>
+  <tr><td>Insurance service result</td><td class="n">6.33</td><td class="n">3.41</td><td class="n">2.61</td></tr>
+</table>
+<figure><img src="../outputs/charts/05_assumption_review_impact.png" alt="Core result table chart"><figcaption>Core result table at 31 Dec 2025: same book and curve, basis_2022 against basis_2025.</figcaption></figure>
+<p>The review hurts value (BEL +17%, CSM −16%) but lowers SCR (−6%) and risk margin (−8%): higher lapses and costs leave less future profit to lose in a mass lapse. Current rates now earn 6.0–7.4% on new business; the 2026 rate table rises 2.0–6.9% for level term and 3.9–8.4% for mortgage protection.</p>
+
+<h2>6. Validation</h2>
+<ul>
+  <li>Golden values from an independent implementation for two test policies: premium, ℓ, V, reserves, profit vector, NPV, IRR, payback, all six stress losses, SCR, BEL, risk margin, CSM, coverage units and the Monte Carlo RA (within 5% of a 200,000-scenario reference).</li>
+  <li>Excel single-policy model in live formulas (fixture and real basis), evaluated formula by formula in the tests; largest difference to Python ≈ 1e-12.</li>
+  <li>Identities: forward PV = backward V₀; in-force conservation; each BEL, RA and CSM walk reconciles to closing; RM ratio equals its identity and lies within [0.396, 0.792]; Σ CSM releases = CSM₀ + accretion; model points equal seriatim values; zero shocks give zero capital.</li>
+  <li>Experience study: with truth = basis, A/E inside its 95% interval in ≥ 17 of 20 seeds; the study code is tested never to read the truth file.</li>
+  <li>60 automated tests; every output rebuilds with one command.</li>
+</ul>
+
+<h2>7. Limitations and next steps</h2>
+<p><strong>Limitations.</strong> Synthetic book; CMI 00 is UK insured-lives experience from 1999–2002 with a judgement-based level; illustrative lapse, expense and commission assumptions; annual steps; life-underwriting SCR only (no assets, market, counterparty or operational risk, no tax); Monte Carlo RA covers level uncertainty only and group RAs are summed; IFRS 17 measurement and CSM roll-forward only (no revenue presentation or loss-component allocation); one cohort; simulated experience.</p>
+<p><strong>Next steps.</strong> Use reinsurer or industry data (e.g. SOA ILEC relativities) to strengthen the mortality basis; model lapse by channel with commission clawback; add assets and market risk for a full solvency ratio; extend to a savings or participating product (variable fee approach, options and guarantees); a Hong Kong RBC comparison.</p>
+
+<p class="sub" style="margin-top:14pt">Code, tests and build specification: github.com/pnlync/assurance. Sources: CMI 00 series (IFoA); CSO Irish Life Tables No. 17; EIOPA risk-free rate term structures; Commission Delegated Regulation (EU) 2015/35 Arts. 136–143; Delegated Regulation (EU) 2026/269 (risk margin, from 30 Jan 2027); IFRS 17 paras 14–20, 38, 44, 81, B119; CJEU C-236/09 Test-Achats; Consumer Credit Act 1995 s.126.</p>
+</body>
+</html>

@@ -1,7 +1,8 @@
 # Private planning notes (guides, CV and interview prep) — never publish
 private_notes/
 
-# IDE / OS
+# IDE / OS / local agent tooling
+.claude/
 .idea/
 .vscode/
 .DS_Store
