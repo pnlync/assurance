@@ -1,8 +1,12 @@
 """Discount curves. Implements SPEC §2.5."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
+
+CURVES_CSV = Path(__file__).resolve().parents[2] / "data" / "processed" / "curves.csv"
 
 
 @dataclass(frozen=True)
@@ -15,6 +19,15 @@ class Curve:
     def flat(cls, rate: float, max_maturity: int = 150) -> "Curve":
         """A flat curve, used for pricing economics and the golden fixture. Implements SPEC §2.5."""
         return cls(np.full(max_maturity, rate, dtype=float))
+
+    @classmethod
+    def eiopa(cls, date: str, csv_path: Path = CURVES_CSV) -> "Curve":
+        """EIOPA EUR risk-free spot curve without VA observed at `date` (e.g. "2022-12-31"). Implements SPEC §2.5, §3."""
+        curves = pd.read_csv(csv_path)
+        c = curves[curves["date"] == date].sort_values("maturity")
+        if c.empty:
+            raise KeyError(f"No curve for {date} in {csv_path}")
+        return cls(c["spot"].to_numpy(float))
 
     def df(self, m):
         """DF(m) = (1 + r(m))^(−m), DF(0) = 1. Implements SPEC §2.5."""
