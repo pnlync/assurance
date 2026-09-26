@@ -1,11 +1,22 @@
 # Raw data (manual downloads, SPEC §3)
 
-These files are not committed. Download them and save with the exact names below.
+Not committed. Save each file into this folder with the name shown (case does not matter).
 
-- [ ] `TMN00.xls`, `TMS00.xls`, `TFN00.xls`, `TFS00.xls` — IFoA, CMI "00" series temporary-assurance tables
+- [x] **CMI 00 series** — `TMN00.xls`, `TMS00.xls`, `TFN00.xls`, `TFS00.xls`
       https://www.actuaries.org.uk/learn-and-develop/continuous-mortality-investigation/cmi-mortality-and-morbidity-tables/00-series-tables
-- [ ] `cso_ilt17.xlsx` — CSO Irish Life Tables No. 17 (2015–2017), comparison chart only
+- [ ] **CSO Irish Life Tables No. 17** — only Table 1 (male) and Table 2 (female); keep the CSO file names
+      `ILT2015-2017_TBL1.xlsx`, `ILT2015-2017_TBL2.xlsx` — the "(XLS 26KB)" links under each table on
       https://www.cso.ie/en/releasesandpublications/er/ilt/irishlifetablesno172015-2017/
-- [ ] `eiopa_rfr_2022-12.*`, `eiopa_rfr_2023-12.*`, `eiopa_rfr_2024-12.*`, `eiopa_rfr_2025-12.*` — EIOPA monthly risk-free rate term structures (EUR, `RFR_spot_no_VA`)
-      https://www.eiopa.europa.eu/tools-and-data/risk-free-interest-rate-term-structures_en
-- [ ] `market_quotes.csv` — Irish comparison-site quotes; columns: age, sex, smoker, sa, term, monthly_low, monthly_high, source, date
+- [ ] **EIOPA risk-free rates** — the four monthly zip files, saved as downloaded (no need to unzip):
+
+  | Reference date | Where on the EIOPA page | File |
+  |---|---|---|
+  | 31 Dec 2022 | "Monthly Technical information 2023" → December 2022 | `December 2022.zip` |
+  | 31 Dec 2023 | "Monthly Technical information 2024" → December 2023 | `EIOPA_RFR_20231231.zip` |
+  | 31 Dec 2024 | "Monthly Technical information 2025" → December 2024 | `EIOPA_RFR_20241231.zip` |
+  | 31 Dec 2025 | "Monthly Technical information 2026" → December 2025 | `EIOPA_RFR_20251231.zip` |
+
+  https://www.eiopa.europa.eu/tools-and-data/risk-free-interest-rate-term-structures_en
+- [ ] **`market_quotes.csv`** — Irish comparison-site quotes (e.g. bonkers.ie, or a broker site); columns:
+      `age, sex, smoker, sa, term, monthly_low, monthly_high, source, date`
+      Suggested rows: ages 30 / 40 / 50 × smoker yes/no, male, SA 250000, term 20 (6 rows; add female rows if easy).

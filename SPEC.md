@@ -1,7 +1,7 @@
 # Life Protection Model — Build Specification
 
-Version 1.1 · 25 Sep 2026 · Owner: Tom Zhang
-Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
+Version 1.2 · 26 Sep 2026 · Owner: Tom Zhang
+Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
 Audience: the AI coding agent that implements the project, and the owner who reviews it.
 Companion: the owner's Chinese guide ("Life Protection Project Guide") explains the concepts; this file defines exactly what to build.
 
@@ -79,8 +79,8 @@ The owner downloads these manually into `data/raw/`. The agent writes the parser
 | File | Source | Used for |
 |---|---|---|
 | `TMN00.xls`, `TMS00.xls`, `TFN00.xls`, `TFS00.xls` | IFoA, CMI "00" series tables (temporary assurances; male/female × non-smoker/smoker) | base mortality |
-| `cso_ilt17.xlsx` | CSO Irish Life Tables No. 17 (2015–2017) | comparison chart only |
-| `eiopa_rfr_2022-12.*`, `2023-12`, `2024-12`, `2025-12` | EIOPA monthly risk-free rate term structures | discount curves |
+| `ILT2015-2017_TBL1.xlsx`, `ILT2015-2017_TBL2.xlsx` | CSO Irish Life Tables No. 17 (2015–2017), Tables 1 (male) and 2 (female) | comparison chart only |
+| `December 2022.zip`, `EIOPA_RFR_20231231.zip`, `EIOPA_RFR_20241231.zip`, `EIOPA_RFR_20251231.zip` | EIOPA monthly risk-free rate term structures (zips as downloaded; parser reads the Term_Structures workbook inside) | discount curves |
 | `market_quotes.csv` | owner collects from Irish comparison websites | premium reasonableness check (§7.1) |
 
 Parsing:

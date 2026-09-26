@@ -5,9 +5,10 @@ from pathlib import Path
 
 import yaml
 
-from lifemodel.tables import FixtureMortality
+from lifemodel.tables import Cmi00Mortality, FixtureMortality
 
 ASSUMPTIONS_DIR = Path(__file__).resolve().parents[2] / "assumptions"
+PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,9 @@ def _mortality_from_config(cfg: dict):
         )
         return table, cfg["multiplier"]
     if cfg["table"] == "cmi00":
-        raise NotImplementedError("CMI 00 parser arrives with the raw data (SPEC §3, Phase 0).")
+        table = Cmi00Mortality(PROCESSED_DIR / "mortality_cmi00.csv")
+        x = level_multiplier(cfg["improvement_rate"], cfg["table_centre_year"], cfg["issue_year"])
+        return table, x
     raise ValueError(f"Unknown mortality table {cfg['table']!r}")
 
 
