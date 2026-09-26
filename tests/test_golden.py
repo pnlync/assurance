@@ -73,3 +73,45 @@ def test_f2_rate_premium_and_value(f2_rate, f2, fixture_basis, flat3):
     assert f2["premium"].iloc[0] == pytest.approx(426.9708, abs=MONEY)
     assert profit_test(f2, fixture_basis).margin == pytest.approx(0.10, abs=RATE)
     assert value(f2, fixture_basis, flat3)[0, 0] == pytest.approx(-627.6326, abs=MONEY)
+
+
+# ---------- Solvency II (F1, F2, F3) ----------
+
+from lifemodel.solvency2 import bel, risk_margin, scr_path, stress_losses  # noqa: E402
+
+
+@pytest.mark.parametrize("fixture_name, expected", [
+    ("f1", dict(mortality=461.1183, lapse_up=105.0972, lapse_down=0.0, mass=275.6908, expense=180.3446, cat=366.2321)),
+    ("f2", dict(mortality=280.8733, lapse_up=240.1787, lapse_down=0.0, mass=251.0531, expense=180.3446, cat=366.1397)),
+])
+def test_sii_losses_at_issue(request, fixture_basis, flat3, fixture_name, expected):
+    losses = stress_losses(request.getfixturevalue(fixture_name), fixture_basis, flat3)
+    for risk, amount in expected.items():
+        assert losses[risk][0, 0] == pytest.approx(amount, abs=MONEY), risk
+
+
+@pytest.fixture(scope="module")
+def f3(f1, f2):
+    import pandas as pd
+    return pd.concat([f1, f2], ignore_index=True)
+
+
+def test_f3_scr(f3, fixture_basis, flat3):
+    path = scr_path(f3, fixture_basis, flat3)
+    row0 = path.iloc[0]
+    for risk, amount in dict(mortality=741.9916, lapse=526.7438, expense=360.6892, cat=732.3718,
+                             lapse_up=345.2758, lapse_down=0.0, mass=526.7438).items():
+        assert row0[risk] == pytest.approx(amount, abs=MONEY), risk
+    assert path["scr_life"][0] == pytest.approx(1554.0120, abs=MONEY)
+    assert path["scr_life"][1] == pytest.approx(1742.0748, abs=MONEY)
+    assert path["scr_life"][10] == pytest.approx(738.8610, abs=MONEY)
+
+
+def test_f3_bel_and_risk_margin(f3, fixture_basis, flat3):
+    assert bel(f3, fixture_basis, flat3) == pytest.approx(-1316.8596, abs=MONEY)
+    rm = risk_margin(scr_path(f3, fixture_basis, flat3)["scr_life"].to_numpy(), flat3)
+    assert rm.current == pytest.approx(822.3561, abs=MONEY)
+    assert rm.rule_2027 == pytest.approx(526.5710, abs=MONEY)
+    assert rm.ratio == pytest.approx(0.64031996, abs=RATE)
+    assert rm.identity_ratio == pytest.approx(rm.ratio, rel=1e-10)
+    assert 0.3958 <= rm.ratio <= 0.7917

@@ -60,14 +60,17 @@ def cash_flow_items(policies: pd.DataFrame, basis: Basis, include_overhead: bool
     }
 
 
-def value(policies, basis, curve: Curve, start_duration: int = 0, include_overhead: bool = True):
+def value(policies, basis, curve: Curve, start_duration: int = 0, include_overhead: bool = True, q=None, w=None):
     """V_t by backward recursion for t ≥ start_duration, shape (N, n+1); earlier columns are NaN. Implements SPEC §6.3, §2.4.
 
     V_t = −P + comm_t + exp_t + v_t [ q_t (S_t + CE_t) + (1 − q_t)(1 − w_t) V_{t+1} ],  V_n = 0.
     Positive = liability; negative = expected future profit.
+    `q`, `w` (N, n) override the basis rates, for shocks that are not simple multipliers (SPEC §9.2).
     """
     n = policy_term(policies)
-    q, w = rates(policies, basis)
+    q_basis, w_basis = rates(policies, basis)
+    q = q_basis if q is None else q
+    w = w_basis if w is None else w
     cf = cash_flow_items(policies, basis, include_overhead)
     v = curve.one_year_factors(n - start_duration)  # v[j] discounts policy year start_duration + j
 

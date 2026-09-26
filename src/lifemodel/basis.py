@@ -63,7 +63,7 @@ def _mortality_from_config(cfg: dict):
     if cfg["table"] == "cmi00":
         table = Cmi00Mortality(PROCESSED_DIR / "mortality_cmi00.csv")
         x = level_multiplier(cfg["improvement_rate"], cfg["table_centre_year"], cfg["issue_year"])
-        return table, x
+        return table, x * cfg.get("experience_adjustment", 1.0)
     raise ValueError(f"Unknown mortality table {cfg['table']!r}")
 
 

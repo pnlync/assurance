@@ -144,3 +144,30 @@ def test_exam_mode_appendix_b_worked_example():
     in_force = np.concatenate([[1.0], np.cumprod((1 - np.array(q)) * (1 - np.array(w)))])[:3]
     epv_premiums = 180.0 * (in_force @ 1.08 ** -np.arange(3.0))
     assert npv / epv_premiums == pytest.approx(0.136, abs=0.0005)
+
+
+def test_zero_shock_gives_zero_capital(f1, fixture_basis, flat3):
+    """Validation item: with every shock switched off the stress losses vanish (SPEC §13.2 / guide list)."""
+    from lifemodel import solvency2 as s2
+    params = ("MORTALITY_SHOCK", "EXPENSE_SHOCK", "INFLATION_SHOCK", "CAT_SHOCK", "MASS_LAPSE")
+    saved = {p: getattr(s2, p) for p in params} | {"LAPSE_UP": s2.LAPSE_UP, "LAPSE_DOWN": s2.LAPSE_DOWN}
+    try:
+        for p in params:
+            setattr(s2, p, 0.0)
+        s2.LAPSE_UP, s2.LAPSE_DOWN = 1.0, 0.0
+        losses = s2.stress_losses(f1, fixture_basis, flat3)
+        for risk in ("mortality", "lapse_up", "lapse_down", "mass", "expense", "cat"):
+            assert np.allclose(losses[risk], 0, atol=1e-9), risk
+    finally:
+        for p, v in saved.items():
+            setattr(s2, p, v)
+
+
+def test_risk_margin_identity_random_paths():
+    from lifemodel.solvency2 import risk_margin
+    rng = np.random.default_rng(1)
+    curve = Curve(np.linspace(0.02, 0.035, 60))
+    for _ in range(20):
+        rm = risk_margin(rng.random(25) * 1000, curve)
+        assert rm.ratio == pytest.approx(rm.identity_ratio, rel=1e-10)
+        assert 0.3958 <= rm.ratio <= 0.7917

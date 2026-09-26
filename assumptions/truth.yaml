@@ -1,0 +1,6 @@
+# Hidden "truth" used ONLY by the simulator (SPEC §4.6, §8.1). The experience study must never read this file.
+relative_to: basis_2022
+mortality_multiplier: 1.10            # true q = 110% of the best-estimate q
+lapse_multiplier: 1.20                # true w = 120% of the best-estimate w × channel factor, capped at 1
+lapse_channel_factor: {broker: 1.10, direct: 0.767}
+maintenance_expense_multiplier: 1.06  # actual maintenance cost = 106% of basis

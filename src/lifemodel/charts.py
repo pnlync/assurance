@@ -123,3 +123,108 @@ def sex_mix(table, note: str, priced_share: float) -> Path:
     ax.set_title("Unisex pricing: margin if the sex mix differs from the priced 60% male")
     ax.legend(loc="lower left")
     return _save(fig, "02c_sex_mix_margin.png", note)
+
+
+def _ae_dots(ax, frame, value, lo, hi, color, label=None, offset=0.0):
+    y = np.arange(len(frame)) + offset
+    ax.errorbar(frame[value], y, xerr=[frame[value] - frame[lo], frame[hi] - frame[value]], fmt="o",
+                color=color, ecolor=color, elinewidth=1.5, capsize=0, markersize=6, label=label, zorder=3)
+    return y
+
+
+def mortality_ae(study, note: str) -> Path:
+    """Chart 3: mortality A/E by count, by segment, with 95% CIs (SPEC §12)."""
+    # Calendar year is omitted: every policy was issued in 2023, so it repeats policy year exactly.
+    cuts = [("total", "Total"), ("t", "Policy year"), ("age_band", "Attained age"),
+            ("sex", "Sex"), ("smoker", "Smoker"), ("product", "Product"), ("sa_band", "Sum assured")]
+    frames = []
+    for cut, title in cuts:
+        f = study[study["cut"] == cut].copy()
+        if cut == "t":
+            f["segment"] = "PY " + (f["segment"].astype(int) + 1).astype(str)
+        if cut == "sa_band":
+            order = {"<150k": 0, "150-300k": 1, "300-500k": 2, "500k+": 3}
+            f = f.sort_values("segment", key=lambda c: c.map(order))
+        f["label"] = title + ": " + f["segment"].astype(str) + "  (" + f["deaths"].astype(int).astype(str) + " deaths)"
+        frames.append(f)
+    import pandas as pd
+    data = pd.concat(frames, ignore_index=True).iloc[::-1].reset_index(drop=True)
+    fig, ax = plt.subplots(figsize=(9, 8))
+    _ae_dots(ax, data, "ae_deaths", "ae_deaths_lo", "ae_deaths_hi", SERIES[0])
+    ax.axvline(1.0, color=TEXT_2, linewidth=0.8, linestyle="--")
+    ax.set_yticks(np.arange(len(data)), data["label"])
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.set_xlabel("Actual / expected deaths (by count) on basis_2022, with 95% confidence interval")
+    ax.set_title("Mortality A/E 2023–25: wide intervals, few deaths")
+    ax.grid(axis="y", visible=False)
+    return _save(fig, "03_mortality_ae_segments.png", note)
+
+
+def lapse_ae(by_t_channel, study, note: str) -> Path:
+    """Chart 4: lapse A/E by policy year and channel (SPEC §12)."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    years = sorted({s.split()[0] for s in by_t_channel["segment"]})
+    x = np.arange(len(years))
+    for i, (channel, color) in enumerate(zip(("broker", "direct"), SERIES)):
+        f = by_t_channel[by_t_channel["segment"].str.endswith(channel)].copy()
+        f["py"] = f["segment"].str.split().str[0]
+        f = f.set_index("py").loc[years]
+        ax.errorbar(x + (i - 0.5) * 0.18, f["ae_lapses"], yerr=[f["ae_lapses"] - f["ae_lapses_lo"],
+                    f["ae_lapses_hi"] - f["ae_lapses"]], fmt="o-", color=color, markersize=6, elinewidth=1.5,
+                    capsize=0, label=f"{channel.capitalize()} channel")
+    total = study[(study["cut"] == "total")].iloc[0]["ae_lapses"]
+    ax.axhline(1.0, color=TEXT_2, linewidth=0.8, linestyle="--")
+    ax.axhline(total, color=TEXT_2, linewidth=0.8, linestyle=":")
+    ax.text(x[-1] + 0.65, total + 0.01, f"all channels: {total:.0%}", color=TEXT_2, fontsize=8, ha="right", va="bottom")
+    ax.set_xticks(x, [y.replace("PY", "Policy year ") for y in years])
+    ax.set_xlim(-0.4, x[-1] + 0.7)
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.set_ylabel("Actual / expected lapses")
+    ax.set_title("Lapse A/E 2023–25: about 20% above basis, higher through brokers")
+    ax.legend(loc="center right")
+    return _save(fig, "04_lapse_ae_duration_channel.png", note)
+
+
+def scr_and_risk_margin(summary, paths, note: str) -> Path:
+    """Chart 6: SCR by component, SCR run-off, and risk margin current vs 2027 (SPEC §12)."""
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(14, 4.4), gridspec_kw={"width_ratios": [1.1, 1.3, 1]})
+    total = summary[summary["product"] == "Total"].iloc[0]
+    parts = [("Mortality", total["scr_mortality"]), ("Lapse", total["scr_lapse"]), ("Expense", total["scr_expense"]),
+             ("Catastrophe", total["scr_cat"]), ("Diversification", -total["diversification"]),
+             ("Life SCR", total["scr_life"])]
+    running = 0.0
+    for i, (name, amount) in enumerate(parts):
+        if name == "Life SCR":
+            a.bar(i, amount, color=SERIES[0], width=0.7)
+        else:
+            # heights are always positive; a negative step (diversification) spans running+amount … running
+            a.bar(i, abs(amount), bottom=running if amount >= 0 else running + amount,
+                  color=GRID if amount < 0 else SERIES[1], width=0.7)
+            running += amount
+        top = amount if name == "Life SCR" else (running if amount >= 0 else running - amount)
+        a.text(i, top + total["scr_life"] * 0.02, f"{'−' if amount < 0 else ''}€{abs(amount) / 1e6:.1f}m",
+               ha="center", fontsize=8, color=TEXT_2)
+    a.set_xticks(range(len(parts)), [p[0] for p in parts], rotation=30, ha="right")
+    a.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"€{v / 1e6:.0f}m"))
+    a.set_title("Life SCR at issue, by risk")
+
+    for product, color in zip(("LTA", "MP"), SERIES):
+        p = paths[paths["product"] == product]
+        b.plot(p["j"], p["scr_life"], color=color, label="Level term" if product == "LTA" else "Mortgage protection")
+    b.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"€{v / 1e6:.0f}m"))
+    b.set_xlabel("Years after issue")
+    b.set_xticks([0, 5, 10, 15, 19])
+    b.set_title("Projected life SCR run-off")
+    b.legend(loc="upper right")
+
+    prods = summary[summary["product"].isin(["LTA", "MP"])]
+    x = np.arange(len(prods))
+    c.bar(x - 0.18, prods["rm_current"], width=0.34, color=SERIES[0], label="Current (6%)")
+    c.bar(x + 0.18, prods["rm_2027"], width=0.34, color=SERIES[1], label="2027 (4.75%, 0.96^t)")
+    for xi, (_, r) in zip(x, prods.iterrows()):
+        c.text(xi + 0.18, r["rm_2027"], f"−{1 - r['rm_ratio']:.0%}", ha="center", va="bottom", fontsize=9, color=TEXT)
+    c.set_xticks(x, ["Level term", "Mortgage protection"])
+    c.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"€{v / 1e6:.1f}m"))
+    c.set_title("Risk margin at issue")
+    c.legend(loc="upper right")
+    return _save(fig, "06_scr_and_risk_margin.png", note)
