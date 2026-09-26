@@ -73,8 +73,12 @@ def reserves(policy: pd.DataFrame, basis: Basis) -> np.ndarray:
     return res
 
 
-def profit_test(policy: pd.DataFrame, basis: Basis, hold_reserves: bool = True) -> ProfitTest:
-    """Profit test of a single policy on the pricing basis, including overhead. Implements SPEC §7.3."""
+def profit_test(policy: pd.DataFrame, basis: Basis, hold_reserves: bool = True, reserve_basis: Basis = None) -> ProfitTest:
+    """Profit test of a single policy on the pricing basis, including overhead. Implements SPEC §7.3.
+
+    `reserve_basis` (default: `basis`) is the basis whose reserving rules set the reserves. Sensitivities pass the
+    unshocked basis, so reserves stay as set at pricing and only the experience changes (SPEC §7.4).
+    """
     if len(policy) != 1:
         raise ValueError("profit_test works on one policy at a time.")
     q, w = rates(policy, basis)
@@ -90,7 +94,7 @@ def profit_test(policy: pd.DataFrame, basis: Basis, hold_reserves: bool = True) 
         )
         return pr, in_force[:n] * pr
 
-    res = reserves(policy, basis) if hold_reserves else np.zeros(n + 1)
+    res = reserves(policy, reserve_basis or basis) if hold_reserves else np.zeros(n + 1)
     pr, sig = run(res)
     npv, epv, margin, irr_, payback = profit_measures(sig, premium, in_force, basis.risk_discount_rate)
     _, sig0 = run(np.zeros(n + 1))
@@ -111,18 +115,18 @@ def solve_rate(product, issue_age, sex, smoker, basis: Basis, sa=None) -> float:
         policy = make_policy(product, issue_age, sex, smoker, sa, premium_from_rate(rate, sa, basis))
         return profit_test(policy, basis).margin - basis.target_margin
 
-    return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
+    return brentq(margin_gap, 1e-6, 200.0, xtol=1e-12)  # rate > 0 so a fee-free premium is never 0
 
 
-def pooled_margin(product, issue_age, smoker, premium, basis: Basis, sa=None, male_share=None) -> float:
+def pooled_margin(product, issue_age, smoker, premium, basis: Basis, sa=None, male_share=None, reserve_basis=None) -> float:
     """Pooled margin of a male + female pair at one unisex premium, weighted by male share m.
 
     margin = [m NPV_M + (1 − m) NPV_F] / [m EPV_M + (1 − m) EPV_F]. Implements SPEC §7.2, §7.4.
     """
     sa = basis.reference_sa[product] if sa is None else sa
     m = basis.male_share if male_share is None else male_share
-    male = profit_test(make_policy(product, issue_age, "M", smoker, sa, premium), basis)
-    female = profit_test(make_policy(product, issue_age, "F", smoker, sa, premium), basis)
+    male = profit_test(make_policy(product, issue_age, "M", smoker, sa, premium), basis, reserve_basis=reserve_basis)
+    female = profit_test(make_policy(product, issue_age, "F", smoker, sa, premium), basis, reserve_basis=reserve_basis)
     return (m * male.npv + (1 - m) * female.npv) / (m * male.epv_premiums + (1 - m) * female.epv_premiums)
 
 
@@ -134,7 +138,7 @@ def solve_unisex_rate(product, issue_age, smoker, basis: Basis, sa=None, male_sh
         premium = premium_from_rate(rate, sa, basis)
         return pooled_margin(product, issue_age, smoker, premium, basis, sa, male_share) - basis.target_margin
 
-    return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
+    return brentq(margin_gap, 1e-6, 200.0, xtol=1e-12)  # rate > 0 so a fee-free premium is never 0
 
 
 def profit_test_exam_mode(premium, commission, expenses, q, w, sum_assured, claim_expense, reserves, earned_rate, rdr):

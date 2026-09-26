@@ -1,6 +1,6 @@
-# Phase 1 summary — engine and pricing (part 1 of 2)
+# Phase 1 summary — engine and pricing
 
-Status: **engine and pricing done on the fixture basis; real-basis work waits for the raw data.**
+Status: **all built and tested except three items that need the owner: market quotes (§7.1), CM1 past paper (§7.5), Excel reconciliation (§13.4).** 38 tests pass. Rebuild all outputs with `uv run python -m lifemodel.run_phase1` (≈ 8 s).
 
 ## Order of work (decision)
 Phase 0 parsers need the manual downloads in `data/raw/`. The F1/F2 golden tests need only the fixture basis (SPEC §13.3), so the engine and pricing were built first and the parsers will follow when the data arrives. Phase 1 is accepted only once the real-basis items below are also done.
@@ -28,11 +28,38 @@ Assumption files: `assumptions/fixture.yaml`, `assumptions/basis_2022.yaml`.
 - NPV 408.17 with reserves vs 547.01 without: the 138.84 difference is the cost of holding reserves earning 3% against an 8% RDR.
 - MP premium 426.97 vs LTA 579.28 for the same life: ≈ 26% cheaper because cover runs off.
 
-## Still to do for Phase 1 acceptance
-- CMI 00 and EIOPA parsers (Phase 0) once `data/raw/` is filled.
-- Real-basis rate table (§7.2), market reasonableness table (§7.1), charts 1–2, margin by SA band with/without fee, sensitivities (§7.4).
-- CM1 past-paper reproduction (§7.5): owner to supply the question and examiners' report.
-- Excel reconciliation of F1 (§13.4): owner builds `excel/single_policy_check.xlsx`.
+## Real-basis results (basis_2022: CMI 00 × 0.712, unisex at 60% male)
+Outputs: `outputs/tables/` (rate_table, margin_by_sa_lta35ns, pricing_sensitivities, sex_mix_sensitivity), `outputs/charts/` (01, 02, 02b, 02c). Priced book: `data/processed/portfolio.csv`, total annual premium €32.1m; median premium LTA €495, MP €369.
+
+Unisex rates per 1,000 SA (non-smoker / smoker):
+
+| Age | LTA | MP |
+|---|---|---|
+| 25 | 0.715 / 0.944 | 0.542 / 0.681 |
+| 35 | 1.042 / 1.688 | 0.706 / 1.000 |
+| 45 | 2.224 / 4.486 | 1.242 / 2.306 |
+| 55 | 6.147 / 12.943 | 3.120 / 6.688 |
+
+**Policy fee (chart 02b).** With the €60 fee the LTA age-35 margin is −54% at €50k and breaks even only at about €177k; without a fee it is −190% at €50k. The fee helps but is too small for the per-policy costs (acquisition €250, maintenance €60 + overhead €15 p.a., inflating; commission is also paid on the fee). A fee of about €150 p.a. makes the margin roughly flat across €50k–€1m (7–10%). The basis keeps €60 (§4.1); this is reported as a pricing recommendation, not built in.
+
+**Sensitivities at fixed premium** (pooled margin, reserves held on the unshocked basis):
+
+| Scenario | LTA 35 NS | LTA 50 NS | MP 35 NS |
+|---|---|---|---|
+| Base | 10.0% | 10.0% | 10.0% |
+| Mortality +10% | 6.7% | 5.3% | 7.1% |
+| Lapse +20% | 9.8% | 11.4% | 8.7% |
+| Lapse −20% | 10.1% | 8.4% | 11.3% |
+| Expenses +10% | 6.4% | 8.8% | 5.7% |
+| Earned rate −1pp | 9.0% | 6.9% | 9.6% |
+| RDR +2pp | 8.8% | 7.6% | 8.1% |
+
+Lapse direction differs by cell: for LTA 50 higher lapses *raise* the margin (later years are loss-making and reserves are released on lapse with no surrender value), while for MP 35 they cut it (lost future profit). Level-term reserves are hump-shaped (peak ≈ €860 at policy year 14 for the reference life); MP reserves are zero throughout because level premiums exceed the falling cost of cover in every future year.
+
+## Still to do for Phase 1 acceptance (owner)
+- `data/raw/market_quotes.csv` → §7.1 reasonableness table.
+- A CM1 / CT5 past-paper term-assurance profit test with its examiners' report → §7.5 reproduction.
+- `excel/single_policy_check.xlsx` for F1 → §13.4 reconciliation.
 
 ## Open questions
 None.
