@@ -1,7 +1,7 @@
 # Life Protection Model — Build Specification
 
-Version 1.4 · 26 Sep 2026 · Owner: Tom Zhang
-Changes in 1.4: pricing male share 60% with anti-selection rationale and a mix sensitivity (§4.3, §7.4); book 55% male (§5); IFRS 17 para 20 wording (§10.1). Changes in 1.3: unisex pricing (EU gender directive, Test-Achats) in §4.3, §7.1, §7.2; IFRS 17 cells not split by sex (para 20) in §10.1. Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
+Version 1.5 · 26 Sep 2026 · Owner: Tom Zhang
+Changes in 1.5: the CM1 past-paper check is replaced by the Appendix B worked example (§7.5); the agent builds the Excel reconciliation workbook with live formulas (§13.4). Changes in 1.4: pricing male share 60% with anti-selection rationale and a mix sensitivity (§4.3, §7.4); book 55% male (§5); IFRS 17 para 20 wording (§10.1). Changes in 1.3: unisex pricing (EU gender directive, Test-Achats) in §4.3, §7.1, §7.2; IFRS 17 cells not split by sex (para 20) in §10.1. Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
 Audience: the AI coding agent that implements the project, and the owner who reviews it.
 Companion: the owner's Chinese guide ("Life Protection Project Guide") explains the concepts; this file defines exactly what to build.
 
@@ -189,7 +189,7 @@ Sum assured schedule: LTA S_t = SA. MP S_t = SA × (1 − v^(n−t)) / (1 − v^
 
 **7.4 Outputs.** Rate table CSV; charts for the reference LTA and MP (cash flows by year; reserves; profit signature); profit margin by SA band with and without the fee; sensitivity table (mortality ±10%, lapse ±20%, expenses +10%, earned rate ±1pp, RDR ±2pp) showing the change in margin at fixed premium; **sex-mix sensitivity**: pooled margin of the unisex rates at male share 30%, 40%, 50%, 60%, 70% (chart: male share → margin, reference cells), plus the unisex rate that would be needed at each mix.
 
-**7.5 CM1 check.** Provide `profit_test_exam_mode(...)` that accepts an explicitly supplied basis and reserve vector. The owner supplies one IFoA CM1 / CT5 past-paper term-assurance profit test and its examiners' report answer; reproduce the profit vector, profit signature and NPV.
+**7.5 Exam-mode check.** Provide `profit_test_exam_mode(...)` that accepts an explicitly supplied basis and reserve vector, and test it against the Appendix B worked example (profit signature, NPV, margin). (v1.5: the planned CM1 past-paper reproduction was dropped for time; Appendix B is an independent hand calculation of the same textbook mechanics.)
 
 ---
 
@@ -377,7 +377,7 @@ Cash-flow experience of the year (P&L): claims A − E = Σ_{D}(S_k + CE_k) − 
 - IFRS 17 with a fixed RA of 0.25 × SCR_life(0) = 388.5030 (test only), locked-in curve flat 3%: FCF_0 = −1263.6512; CSM_0 = 1263.6512; CU_0 = 500,000.0000, CU_1 = 461,768.7943, CU_19 = 87,114.5756; CSM release in years 1, 2, 3 = 133.6955, 127.1770, 116.9930; closing CSM after year 20 = 0; total releases = 1607.9465
 - Monte Carlo RA (§10.3, IFRS basis, F1 + F2 as one group — a test construct only; in the model they sit in different portfolios): reference values from 200,000 scenarios: RA_65 ≈ 134.5, RA_75 ≈ 233.5, RA_85 ≈ 357.5. With 10,000 scenarios RA_75 must lie within ±5% of 233.5.
 
-**13.4 Excel reconciliation.** The owner's Excel single-policy model of F1 (and later of a real-basis reference policy) must agree with Python to within €0.01 on premium, ℓ_t, V_t, reserves, profit vector, NPV, and the t = 0 Solvency II losses.
+**13.4 Excel reconciliation.** `excel/single_policy_check.xlsx`: a single-policy model of F1 built with live Excel formulas from the assumptions on its input sheet (no values pasted from Python), laid out one column per step so a reader can follow it. A test recalculates it and checks agreement with Python to within €0.01 on premium, ℓ_t, V_t, reserves, profit vector, NPV and margin (and later the t = 0 Solvency II losses). Built by the agent (v1.5); the owner reviews it.
 
 ---
 

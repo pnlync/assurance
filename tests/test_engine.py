@@ -128,3 +128,19 @@ def test_unisex_rate_between_female_and_male(fixture_basis):
     # more men than priced for → lower margin
     assert pooled_margin("LTA", 40, False, p, b, male_share=0.70) < b.target_margin < pooled_margin(
         "LTA", 40, False, p, b, male_share=0.50)
+
+
+def test_exam_mode_appendix_b_worked_example():
+    """SPEC Appendix B toy profit test, replacing the CM1 past-paper check (SPEC §7.5, v1.5)."""
+    q = [0.0010, 0.0011, 0.0012]
+    w = [0.10, 0.10, 0.0]
+    pr, sig, npv = profit_test_exam_mode(
+        premium=180.0, commission=[0, 0, 0], expenses=[100.0, 15.0, 15.0], q=q, w=w,
+        sum_assured=[100_000.0] * 3, claim_expense=[0, 0, 0], reserves=[0, 0, 0, 0],
+        earned_rate=0.03, rdr=0.08,
+    )
+    np.testing.assert_allclose(sig, [-17.60, 53.90, 40.37], atol=0.005)
+    assert npv == pytest.approx(61.97, abs=0.005)
+    in_force = np.concatenate([[1.0], np.cumprod((1 - np.array(q)) * (1 - np.array(w)))])[:3]
+    epv_premiums = 180.0 * (in_force @ 1.08 ** -np.arange(3.0))
+    assert npv / epv_premiums == pytest.approx(0.136, abs=0.0005)
