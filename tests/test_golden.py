@@ -115,3 +115,37 @@ def test_f3_bel_and_risk_margin(f3, fixture_basis, flat3):
     assert rm.ratio == pytest.approx(0.64031996, abs=RATE)
     assert rm.identity_ratio == pytest.approx(rm.ratio, rel=1e-10)
     assert 0.3958 <= rm.ratio <= 0.7917
+
+
+# ---------- IFRS 17 (F3) ----------
+
+def test_f3_ifrs17_fixed_ra(f3, fixture_basis, flat3):
+    from lifemodel.ifrs17 import coverage_units, csm_expected_runoff
+    from lifemodel.projection import value
+    import pandas as pd
+    ra = 0.25 * scr_path(f3, fixture_basis, flat3)["scr_life"][0]
+    assert ra == pytest.approx(388.5030, abs=MONEY)
+    be = value(f3, fixture_basis, flat3, include_overhead=False)[:, 0].sum()
+    fcf = be + ra
+    assert fcf == pytest.approx(-1263.6512, abs=MONEY)
+    csm0 = max(0.0, -fcf)
+    assert csm0 == pytest.approx(1263.6512, abs=MONEY)
+    cu = coverage_units(f3, fixture_basis, [1, 1], pd.Series(["g", "g"]), 0)["g"].to_numpy()
+    assert cu[0] == pytest.approx(500_000.0, abs=MONEY)
+    assert cu[1] == pytest.approx(461_768.7943, abs=MONEY)
+    assert cu[19] == pytest.approx(87_114.5756, abs=MONEY)
+    run = csm_expected_runoff(csm0, cu, flat3)
+    np.testing.assert_allclose(run["release"][:3], [133.6955, 127.1770, 116.9930], atol=MONEY)
+    assert run["closing"].iloc[-1] == pytest.approx(0.0, abs=MONEY)
+    assert run["release"].sum() == pytest.approx(1607.9465, abs=MONEY)
+
+
+def test_f3_monte_carlo_ra(f3, fixture_basis, flat3):
+    """10,000 scenarios, seed 17: RA_75 within ±5% of the 200,000-scenario reference 233.5 (SPEC §13.3)."""
+    import pandas as pd
+    from lifemodel.ifrs17 import ModelPoints, risk_adjustment, scenario_multipliers
+    mp = ModelPoints(f3, fixture_basis)
+    pv, _ = mp.group_pv(f3, [1, 1], pd.Series(["g", "g"]), flat3, 0, scenario_multipliers())
+    assert risk_adjustment(pv, 0.75)[0] == pytest.approx(233.5, rel=0.05)
+    assert risk_adjustment(pv, 0.65)[0] == pytest.approx(134.5, rel=0.05)
+    assert risk_adjustment(pv, 0.85)[0] == pytest.approx(357.5, rel=0.05)

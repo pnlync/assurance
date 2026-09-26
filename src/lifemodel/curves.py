@@ -41,6 +41,17 @@ class Curve:
         dfs = self.df(m)
         return dfs[1:] / dfs[:-1]
 
+    def forward_from(self, years: int) -> "Curve":
+        """The curve seen `years` later with nothing changed: DF_s(m) = DF(m + years) / DF(years). SPEC §2.5, §11.3.
+
+        Used for the locked-in curve L at duration k+1 (v_{k+1+j} = DF_L(k+2+j) / DF_L(k+1+j)).
+        """
+        if years == 0:
+            return self
+        m = np.arange(1, len(self.spot) - years + 1)
+        df_s = self.df(m + years) / self.df(years)
+        return Curve(df_s ** (-1.0 / m) - 1.0)
+
     def rolled_forward(self) -> "Curve":
         """Curve observed one year earlier, used one year later: DF_f(m) = DF(m+1) / DF(1). Implements SPEC §2.5."""
         m = np.arange(1, len(self.spot))

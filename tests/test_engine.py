@@ -171,3 +171,21 @@ def test_risk_margin_identity_random_paths():
         rm = risk_margin(rng.random(25) * 1000, curve)
         assert rm.ratio == pytest.approx(rm.identity_ratio, rel=1e-10)
         assert 0.3958 <= rm.ratio <= 0.7917
+
+
+def test_model_points_reproduce_seriatim_values(fixture_basis):
+    """The affine two-point trick equals seriatim V exactly, at issue and at a later duration (SPEC §10.3)."""
+    import pandas as pd
+    from lifemodel.ifrs17 import BASE, ModelPoints
+    book = generate_portfolio(n=3_000)
+    book = book.assign(premium=(1.0 + 0.02 * (book["issue_age"] - 25) + 0.5 * book["smoker"]) * book["sa"] / 1000
+                       + fixture_basis.policy_fee)
+    curve = Curve(np.linspace(0.015, 0.03, 60))
+    mp = ModelPoints(book, fixture_basis)
+    labels = pd.Series(np.where(book["product"] == "LTA", "a", "b"), index=book.index)
+    weights = np.random.default_rng(0).random(len(book))
+    for k in (0, 3):
+        pv, names = mp.group_pv(book, weights, labels, curve, k, BASE)
+        seriatim = value(book, fixture_basis, curve, start_duration=k, include_overhead=False)[:, k] * weights
+        expected = pd.Series(seriatim).groupby(labels.to_numpy()).sum()[names].to_numpy()
+        np.testing.assert_allclose(pv[0], expected, rtol=1e-10)

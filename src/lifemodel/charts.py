@@ -26,7 +26,7 @@ plt.rcParams.update({
     "legend.frameon": False, "lines.linewidth": 2, "xtick.major.size": 0, "ytick.major.size": 0,
 })
 
-EUR = FuncFormatter(lambda v, _: f"€{v:,.0f}")
+EUR = FuncFormatter(lambda v, _: f"{'−' if v < 0 else ''}€{abs(v):,.0f}")
 
 
 def _save(fig, name: str, note: str) -> Path:
@@ -228,3 +228,110 @@ def scr_and_risk_margin(summary, paths, note: str) -> Path:
     c.set_title("Risk margin at issue")
     c.legend(loc="upper right")
     return _save(fig, "06_scr_and_risk_margin.png", note)
+
+
+def csm_release(by_product, note: str) -> Path:
+    """Chart 7: expected cumulative CSM release, level term vs mortgage protection (SPEC §12)."""
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    labels = {"LTA": "Level term", "MP": "Mortgage protection"}
+    for (product, color) in zip(("LTA", "MP"), SERIES):
+        p = by_product[by_product["product"] == product].sort_values("year")
+        released = p["release"].cumsum() / p["release"].sum()
+        ax.plot(p["year"], released, color=color, label=labels[product])
+        five = released.iloc[4]
+        ax.scatter([5], [five], color=color, s=36, zorder=3)
+        if product == "MP":
+            ax.text(4.6, five + 0.03, f"{five:.0%} by year 5", ha="right", va="bottom", fontsize=8, color=TEXT_2)
+        else:
+            ax.text(5.4, five - 0.03, f"{five:.0%} by year 5", ha="left", va="top", fontsize=8, color=TEXT_2)
+    ax.set_xticks([1, 5, 10, 15, 20])
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.set_xlabel("Policy year")
+    ax.set_ylabel("Share of total CSM released")
+    ax.set_title("Mortgage protection releases its CSM faster")
+    ax.legend(loc="lower right")
+    return _save(fig, "07_csm_release_lta_vs_mp.png", note)
+
+
+def assumption_review_impact(core, note: str) -> Path:
+    """Chart 5: the core result table as % change from basis_2022 to basis_2025 at 31 Dec 2025 (SPEC §12)."""
+    rows = core[core["unit"] == "EUR"].copy()
+    rows = rows[rows["metric"] != "IFRS 17 loss component"]
+    rows["pct"] = rows["change"] / rows["basis_2022"].abs()
+    extra = core[core["metric"] == "Premium adequacy, book (premium-weighted)"].iloc[0]
+    fig, (a, b) = plt.subplots(1, 2, figsize=(12, 4.2), gridspec_kw={"width_ratios": [1.6, 1]})
+    y = np.arange(len(rows))[::-1]
+    a.barh(y, rows["pct"], color=SERIES[0], height=0.6)
+
+    def eur(v):
+        return f"{'−' if v < 0 else ''}€{abs(v) / 1e6:,.1f}m"
+
+    for yi, (_, r) in zip(y, rows.iterrows()):
+        a.text(r["pct"] + (0.01 if r["pct"] >= 0 else -0.01), yi,
+               f"{r['pct']:+.0%}  ({eur(r['basis_2022'])} → {eur(r['basis_2025'])})".replace("-", "−"),
+               va="center", ha="left" if r["pct"] >= 0 else "right", fontsize=8, color=TEXT_2)
+    a.set_yticks(y, rows["metric"])
+    a.axvline(0, color=TEXT_2, linewidth=0.8)
+    a.set_xlim(-0.6, 0.6)
+    a.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    a.set_title("Change from the assumption review, 31 Dec 2025")
+    a.set_xlabel("Change vs basis_2022 (BEL is negative: a rise means less future profit)")
+    margins = core[core["unit"] == "margin"]
+    x = np.arange(len(margins))
+    b.bar(x - 0.18, margins["basis_2022"], width=0.34, color=SERIES[0], label="on basis_2022 (priced)")
+    b.bar(x + 0.18, margins["basis_2025"], width=0.34, color=SERIES[1], label="on basis_2025")
+    b.set_xticks(x, [m.split(", ")[1] for m in margins["metric"]])
+    b.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    b.set_ylim(0, 0.14)
+    b.axhline(0, color=TEXT_2, linewidth=0.8)
+    b.set_title("New-business margin at current rates")
+    b.legend(loc="upper right", ncol=2, fontsize=8)
+    b.text(0.0, -0.16, f"Current premiums cover {extra['basis_2025']:.1%} of the premium basis_2025 requires (book)",
+           transform=b.transAxes, fontsize=8, color=TEXT_2)
+    return _save(fig, "05_assumption_review_impact.png", note)
+
+
+NEUTRAL_STEPS = {"Expected cash flows", "Unwind", "Accretion (locked-in)", "Release to profit"}
+
+
+def _waterfall(ax, steps, total_label_open, total_label_close, colors_by_sign):
+    running = 0.0
+    names, lows, heights, colors = [], [], [], []
+    for i, (name, amount) in enumerate(steps):
+        if i == 0:
+            names.append(total_label_open); lows.append(min(0, amount)); heights.append(abs(amount)); colors.append(SERIES[0])
+            running = amount
+            continue
+        names.append(name); lows.append(min(running, running + amount)); heights.append(abs(amount))
+        colors.append("#b9b8b2" if name in NEUTRAL_STEPS else colors_by_sign[amount > 0])
+        running += amount
+    names.append(total_label_close); lows.append(min(0, running)); heights.append(abs(running)); colors.append(SERIES[0])
+    x = np.arange(len(names))
+    ax.bar(x, heights, bottom=lows, color=colors, width=0.7)
+    values = [steps[0][1]] + [a for _, a in steps[1:]] + [running]
+    for xi, lo, h, v in zip(x, lows, heights, values):
+        label = f"{v / 1e6:+.1f}" if 0 < xi < len(x) - 1 else f"{v / 1e6:.1f}"
+        label = "0.0" if label in ("+0.0", "-0.0") else label.replace("-", "−")
+        ax.text(xi, lo + h, label, ha="center", va="bottom", fontsize=8, color=TEXT_2)
+    ax.set_xticks(x, names, rotation=35, ha="right")
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{'−' if v < 0 else ''}€{abs(v) / 1e6:.0f}m"))
+    ax.axhline(0, color=TEXT_2, linewidth=0.8)
+
+
+def aoc_waterfall_2025(sii, ifrs, note: str) -> Path:
+    """Chart 8: 2025 analysis of change — Solvency II BEL and IFRS 17 CSM side by side (SPEC §12)."""
+    fig, (a, b) = plt.subplots(1, 2, figsize=(13, 4.8))
+    bel_steps = [("Opening", sii["opening"]), ("Expected cash flows", sii["expected_cash_flows"]),
+                 ("Unwind", sii["unwind"]), ("Mortality experience", sii["mortality_experience"]),
+                 ("Lapse experience", sii["lapse_experience"]), ("Assumption change", sii["assumption_change"]),
+                 ("Economic (curve)", sii["economic"])]
+    # BEL: increase = worse (orange); decrease = better (blue-grey)
+    _waterfall(a, bel_steps, "Opening BEL", "Closing BEL", {True: SERIES[1], False: SERIES[2]})
+    a.set_title("Solvency II BEL, 2025 (a rise = less future profit; grey = expected)")
+    csm_steps = [("Opening", ifrs["csm_opening"]), ("Accretion (locked-in)", ifrs["csm_accretion"]),
+                 ("Mortality experience", ifrs["csm_adj_mortality"]), ("Lapse experience", ifrs["csm_adj_lapse"]),
+                 ("Assumption change", ifrs["csm_adj_assumptions"]), ("RA change", ifrs["csm_adj_ra"]),
+                 ("Onerous (to loss comp.)", ifrs["csm_lc_absorbed"]), ("Release to profit", ifrs["csm_release"])]
+    _waterfall(b, csm_steps, "Opening CSM", "Closing CSM", {True: SERIES[2], False: SERIES[1]})
+    b.set_title("IFRS 17 CSM, 2025 (a fall = less profit to come; grey = expected)")
+    return _save(fig, "08_aoc_waterfall_2025.png", note)
