@@ -19,6 +19,8 @@ dist/
 # Data: raw downloads are third-party files (CMI, CSO, EIOPA) — fetch per data/raw/README.md
 data/raw/*
 !data/raw/README.md
+# Owner-collected quotes are our own data, so they are committed
+!data/raw/market_quotes.csv
 # Processed data is regenerated from raw by the parsers and simulator
 data/processed/*
 !data/processed/.gitkeep
