@@ -1,7 +1,7 @@
 # Life Protection Model — Build Specification
 
-Version 1.2 · 26 Sep 2026 · Owner: Tom Zhang
-Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
+Version 1.3 · 26 Sep 2026 · Owner: Tom Zhang
+Changes in 1.3: unisex pricing (EU gender directive, Test-Achats) in §4.3, §7.1, §7.2; IFRS 17 cells not split by sex (para 20) in §10.1. Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
 Audience: the AI coding agent that implements the project, and the owner who reviews it.
 Companion: the owner's Chinese guide ("Life Protection Project Guide") explains the concepts; this file defines exactly what to build.
 
@@ -86,7 +86,7 @@ The owner downloads these manually into `data/raw/`. The agent writes the parser
 Parsing:
 - CMI 00: store a tidy `data/processed/mortality_cmi00.csv` (columns: table, age, duration, qx). If a table provides select rates (durations 0…s−1), use them by duration and the ultimate rate from duration s; otherwise use the ultimate rate for all durations. Record which in the assumption register.
 - EIOPA: use the basic risk-free spot curve **without** volatility adjustment for EUR (sheet commonly named `RFR_spot_no_VA`, column `Euro`), maturities 1–60 at least. Store `data/processed/curves.csv` (date, maturity, spot).
-- `market_quotes.csv` columns: age, sex, smoker, sa, term, monthly_low, monthly_high, source, date.
+- `market_quotes.csv` columns: age, sex, smoker, sa, term, monthly_low, monthly_high, source, date. Irish quotes are unisex, so sex = U.
 
 ---
 
@@ -105,6 +105,8 @@ Parsing:
 **4.2 Reserving basis** (profit test only): mortality 110% of the best-estimate basis; no lapses; interest 2.5% flat; expenses as §4.1 (including overhead); reserves floored at 0 ("zeroised"); no reserve held at t = 0.
 
 **4.3 Pricing economics:** earned rate i = 3.0% flat; risk discount rate RDR = 8.0% flat; target profit margin 10%.
+
+**Unisex pricing.** Since 21 Dec 2012 EU insurers may not use sex as a pricing factor (CJEU case C-236/09 Test-Achats; Directive 2004/113/EC Art. 5(2) invalid). Premium rates are therefore unisex; valuation, reserving, Solvency II, IFRS 17 and the experience study still use sex-specific mortality because that is the actual risk. Pricing assumes a female share of 50% (`pricing.unisex_female_share`, matching §5).
 
 **4.4 IFRS 17 basis:** §4.1 excluding overhead (only directly attributable expenses). Discount curve: EIOPA RFR without VA, illiquidity premium 0. Locked-in curve L = 2022-12-31. RA per §10.3. Coverage units per §10.4. No OCI option (all insurance finance income/expense in P&L).
 
@@ -171,9 +173,9 @@ Sum assured schedule: LTA S_t = SA. MP S_t = SA × (1 − v^(n−t)) / (1 − v^
 
 ## 7. Pricing (`src/lifemodel/pricing.py`)
 
-**7.1 Market reasonableness check** (does not change the basis). For each row of `market_quotes.csv`, compute the model's monthly premium (annual / 12) at the 10% target margin for an LTA of that age, sex, smoker status and SA, using X from §4.1. Report model, low, high, mid = (monthly_low + monthly_high) / 2, model / mid, and whether model lies within [low, high]. Also report, as a diagnostic only, the implied X that would minimise Σ ((model − mid) / mid)² on a grid 0.30–1.00 (step 0.01); it is never written to the basis. Rationale (state it in the phase summary): retail premiums also reflect underwriting, commission, expenses, margins and insurer strategy, so a quote cannot identify mortality uniquely. Flag for the owner if any model / mid lies outside 0.5–2.0.
+**7.1 Market reasonableness check** (does not change the basis). For each row of `market_quotes.csv`, compute the model's monthly premium (annual / 12) at the 10% target margin for an LTA of that age, smoker status and SA (unisex rate per §7.2 when sex = U; sex-specific only if a quote row is sex-specific), using X from §4.1. Report model, low, high, mid = (monthly_low + monthly_high) / 2, model / mid, and whether model lies within [low, high]. Also report, as a diagnostic only, the implied X that would minimise Σ ((model − mid) / mid)² on a grid 0.30–1.00 (step 0.01); it is never written to the basis. Rationale (state it in the phase summary): retail premiums also reflect underwriting, commission, expenses, margins and insurer strategy, so a quote cannot identify mortality uniquely. Flag for the owner if any model / mid lies outside 0.5–2.0.
 
-**7.2 Rate table.** For each cell (product, sex, smoker, issue age 25–55), solve the rate so that the profit margin of a reference policy equals 10% (LTA SA 250,000; MP initial SA 300,000), fee 60. Premium of each policy = rate(cell) × SA / 1000 + 60. Use `scipy.optimize.brentq` with xtol 1e-12.
+**7.2 Rate table (unisex).** For each cell (product, smoker, issue age 25–55), solve the rate so that the combined profit margin of a male and a female reference policy, weighted by the female share f, equals 10%: margin = [(1 − f)·NPV_M + f·NPV_F] / [(1 − f)·EPV_M + f·EPV_F] (LTA SA 250,000; MP initial SA 300,000), fee 60. The single-sex solver is kept for the golden fixtures F1/F2 (§13.3), which are sex-specific by construction. Premium of each policy = rate(cell) × SA / 1000 + 60. Use `scipy.optimize.brentq` with xtol 1e-12.
 
 **7.3 Profit test** (per policy, pricing basis including overhead):
 - Reserves: _tV = max(0, V^R_t) for t = 1 … n−1, V^R from the reserving basis (§4.2) at 2.5% flat; _0V = _nV = 0.
@@ -247,7 +249,7 @@ Assert 0.3958 ≤ RM_new / RM_old ≤ 0.7917.
 
 ## 10. IFRS 17 (`src/lifemodel/ifrs17.py`)
 
-**10.1 Level of aggregation.** Two portfolios — LTA and MP (different products, managed separately; IFRS 17 para 14) — each with one annual cohort, 2023. Within each portfolio, cells = sex × smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups are formed within each portfolio (so up to 6 groups: LTA-G1…G3, MP-G1…G3):
+**10.1 Level of aggregation.** Two portfolios — LTA and MP (different products, managed separately; IFRS 17 para 14) — each with one annual cohort, 2023. Within each portfolio, cells = smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Cells are not split by sex: under unisex pricing, male and female contracts would fall into different groups only because law constrains the price, so IFRS 17 para 20 allows them in the same group (report the male/female CSM split as a disclosure). Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups are formed within each portfolio (so up to 6 groups: LTA-G1…G3, MP-G1…G3):
 - G1 onerous: BE_cell + RA_cell > 0 at initial recognition;
 - G2 no significant possibility of becoming onerous: not G1, and BE_cell under the combined stress (q × 1.15 and w × 1.5) + RA_cell < 0;
 - G3 remaining.

@@ -36,6 +36,7 @@ class Basis:
     earned_rate: float
     risk_discount_rate: float
     target_margin: float
+    unisex_female_share: float
     reference_sa: dict
 
     def reserving_basis(self) -> "Basis":
@@ -96,5 +97,6 @@ def load_basis(name: str) -> Basis:
         earned_rate=cfg["pricing"]["earned_rate"],
         risk_discount_rate=cfg["pricing"]["risk_discount_rate"],
         target_margin=cfg["pricing"]["target_margin"],
+        unisex_female_share=cfg["pricing"]["unisex_female_share"],
         reference_sa=dict(cfg["pricing"]["reference_sa"]),
     )

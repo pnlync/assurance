@@ -36,3 +36,6 @@ Assumption files: `assumptions/fixture.yaml`, `assumptions/basis_2022.yaml`.
 
 ## Open questions
 None.
+
+## Decision — unisex pricing (SPEC 1.3)
+Irish quote sites have no sex field: since 21 Dec 2012 EU insurers must price unisex (CJEU C-236/09, Test-Achats). Rates are now solved for a 50/50 male/female mix (`solve_unisex_rate`); all valuation and experience work stays sex-specific. First real-basis result (LTA, €250k, 20 years): the unisex price leaves men at a margin of about −5% to +4% and women at about +16% to +25%, against the 10% target. Consequence for IFRS 17: male-only groups could be onerous, so cells are not split by sex (IFRS 17 para 20). The gender mix of new business becomes a pricing risk.

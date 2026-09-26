@@ -114,6 +114,25 @@ def solve_rate(product, issue_age, sex, smoker, basis: Basis, sa=None) -> float:
     return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
 
 
+def solve_unisex_rate(product, issue_age, smoker, basis: Basis, sa=None) -> float:
+    """Unisex rate per 1,000 SA: the female-share-weighted male + female reference policies earn the target margin.
+
+    margin = [(1 − f) NPV_M + f NPV_F] / [(1 − f) EPV_M + f EPV_F]. Implements SPEC §7.2, §4.3 (unisex pricing).
+    """
+    sa = basis.reference_sa[product] if sa is None else sa
+    f = basis.unisex_female_share
+
+    def margin_gap(rate):
+        premium = premium_from_rate(rate, sa, basis)
+        m = profit_test(make_policy(product, issue_age, "M", smoker, sa, premium), basis)
+        w = profit_test(make_policy(product, issue_age, "F", smoker, sa, premium), basis)
+        npv = (1 - f) * m.npv + f * w.npv
+        epv = (1 - f) * m.epv_premiums + f * w.epv_premiums
+        return npv / epv - basis.target_margin
+
+    return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
+
+
 def profit_test_exam_mode(premium, commission, expenses, q, w, sum_assured, claim_expense, reserves, earned_rate, rdr):
     """Profit test on an explicitly supplied basis and reserve vector (CM1 / CT5 past papers). Implements SPEC §7.5.
 

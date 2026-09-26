@@ -107,3 +107,18 @@ def test_full_book_valuation_speed(fixture_basis, flat3):
     start = time.perf_counter()
     value(book, fixture_basis, flat3)
     assert time.perf_counter() - start < 5.0
+
+
+def test_unisex_rate_between_female_and_male(fixture_basis):
+    """Unisex rate lies between the single-sex rates, and the weighted margin hits the target (SPEC §7.2)."""
+    from lifemodel.portfolio import make_policy
+    from lifemodel.pricing import premium_from_rate, solve_rate, solve_unisex_rate
+    b = fixture_basis
+    male, female = solve_rate("LTA", 40, "M", False, b), solve_rate("LTA", 40, "F", False, b)
+    unisex = solve_unisex_rate("LTA", 40, False, b)
+    assert female < unisex < male
+    p = premium_from_rate(unisex, 250_000, b)
+    m = profit_test(make_policy("LTA", 40, "M", False, 250_000, p), b)
+    f = profit_test(make_policy("LTA", 40, "F", False, 250_000, p), b)
+    assert (m.npv + f.npv) / (m.epv_premiums + f.epv_premiums) == pytest.approx(b.target_margin, abs=1e-9)
+    assert m.margin < b.target_margin < f.margin  # men are cross-subsidised by women
