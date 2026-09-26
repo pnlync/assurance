@@ -1,6 +1,6 @@
 # Phase 1 summary — engine and pricing
 
-Status: **all built and tested except the Excel reconciliation workbook (§13.4), which the agent builds next.** 38 tests pass. Rebuild all outputs with `uv run python -m lifemodel.run_phase1` (≈ 8 s).
+Status: **accepted.** All Phase 1 items built and tested, including the Excel reconciliation (§13.4). 38 tests pass. Rebuild all outputs with `uv run python -m lifemodel.run_phase1` (≈ 8 s).
 
 ## Order of work (decision)
 Phase 0 parsers need the manual downloads in `data/raw/`. The F1/F2 golden tests need only the fixture basis (SPEC §13.3), so the engine and pricing were built first and the parsers will follow when the data arrives. Phase 1 is accepted only once the real-basis items below are also done.
@@ -70,6 +70,9 @@ Six unisex quotes (LTA €250k, 20 years; owner-collected from bonkers.ie, 26 Se
 
 - Same order of magnitude: every ratio is inside 0.5–2.0, none inside the quoted range. The model is 26–58% dearer than the market mid.
 - Diagnostic implied X = 0.45 (vs 0.712 used). Even at X = 0.45 the error changes sign with age and smoking (30 NS still +35%, 50 S −16%), so the gap is not a mortality level alone. Likely contributors: the illustrative expense loading (a fixed €60 fee plus €250 acquisition weighs most on small young premiums), 100% initial commission, a 10% margin at an 8% RDR, and older mortality (CMI 00 with only 1.5% p.a. improvement) than insurers' current, reinsurer-supported bases. This supports the decision not to back mortality out of quotes. X is unchanged.
+
+## Excel reconciliation (§13.4)
+`excel/single_policy_check.xlsx` (build: `uv run python -m lifemodel.excel_build`). Sheets: Inputs (blue typed assumptions with sources), F1 and Reference (one row per policy year, every value a live formula: q, w, ℓ, S, cash flows, V by backward recursion, reserving V and zeroised reserves, profit vector, signature, NPV, margin, IRR, payback, and the t = 0 Solvency II losses), CMI_TMN00 (table used by the Reference sheet), Check_F1 / Check_Reference (Excel vs Python with differences). A test evaluates every formula with `pycel` and requires agreement within €0.01; the largest difference is about 1e-12. The Reference life (male 35 NS at the unisex rate) earns 4.1% on its own — the cross-subsidy from unisex pricing.
 
 ## Removed from scope (SPEC 1.5)
 - CM1 past-paper reproduction → replaced by the Appendix B worked example (test passes).
