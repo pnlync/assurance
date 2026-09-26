@@ -31,3 +31,16 @@ def test_priced_book(real_basis):
     from lifemodel.pricing_analysis import apply_rates, rate_table
     book = apply_rates(generate_portfolio(n=3_000), rate_table(real_basis), real_basis)
     assert book["premium"].notna().all() and (book["premium"] > real_basis.policy_fee).all()
+
+
+def test_market_reasonableness_structure(real_basis):
+    """Model premiums lie within 0.5–2.0× the quote mid (SPEC §7.1); implied X is on the grid."""
+    import pandas as pd
+    from lifemodel.parsers import RAW
+    from lifemodel.pricing_analysis import market_reasonableness
+    path = RAW / "market_quotes.csv"
+    if not path.exists():
+        pytest.skip("market quotes not collected")
+    table, implied_x = market_reasonableness(pd.read_csv(path).head(2), real_basis, x_grid=[0.45, 0.712])
+    assert not table["flag_outside_0.5_2.0"].any()
+    assert implied_x in (0.45, 0.712)

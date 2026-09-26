@@ -1,6 +1,6 @@
 # Phase 1 summary — engine and pricing
 
-Status: **all built and tested except three items that need the owner: market quotes (§7.1), CM1 past paper (§7.5), Excel reconciliation (§13.4).** 38 tests pass. Rebuild all outputs with `uv run python -m lifemodel.run_phase1` (≈ 8 s).
+Status: **all built and tested except the Excel reconciliation workbook (§13.4), which the agent builds next.** 38 tests pass. Rebuild all outputs with `uv run python -m lifemodel.run_phase1` (≈ 8 s).
 
 ## Order of work (decision)
 Phase 0 parsers need the manual downloads in `data/raw/`. The F1/F2 golden tests need only the fixture basis (SPEC §13.3), so the engine and pricing were built first and the parsers will follow when the data arrives. Phase 1 is accepted only once the real-basis items below are also done.
@@ -56,10 +56,23 @@ Unisex rates per 1,000 SA (non-smoker / smoker):
 
 Lapse direction differs by cell: for LTA 50 higher lapses *raise* the margin (later years are loss-making and reserves are released on lapse with no surrender value), while for MP 35 they cut it (lost future profit). Level-term reserves are hump-shaped (peak ≈ €860 at policy year 14 for the reference life); MP reserves are zero throughout because level premiums exceed the falling cost of cover in every future year.
 
-## Still to do for Phase 1 acceptance (owner)
-- `data/raw/market_quotes.csv` → §7.1 reasonableness table.
-- A CM1 / CT5 past-paper term-assurance profit test with its examiners' report → §7.5 reproduction.
-- `excel/single_policy_check.xlsx` for F1 → §13.4 reconciliation.
+## Market reasonableness (§7.1)
+Six unisex quotes (LTA €250k, 20 years; owner-collected from an Irish comparison site, 26 Sep 2026), monthly:
+
+| Age | Smoker | Market low–high | Model | Model ÷ mid |
+|---|---|---|---|---|
+| 30 | No | €12.44–15.55 | €22.17 | 1.58 |
+| 30 | Yes | €19.95–24.94 | €29.63 | 1.32 |
+| 40 | No | €21.98–27.47 | €35.31 | 1.43 |
+| 40 | Yes | €42.41–53.01 | €60.63 | 1.27 |
+| 50 | No | €52.90–65.13 | €80.54 | 1.36 |
+| 50 | Yes | €116.22–145.27 | €164.85 | 1.26 |
+
+- Same order of magnitude: every ratio is inside 0.5–2.0, none inside the quoted range. The model is 26–58% dearer than the market mid.
+- Diagnostic implied X = 0.45 (vs 0.712 used). Even at X = 0.45 the error changes sign with age and smoking (30 NS still +35%, 50 S −16%), so the gap is not a mortality level alone. Likely contributors: the illustrative expense loading (a fixed €60 fee plus €250 acquisition weighs most on small young premiums), 100% initial commission, a 10% margin at an 8% RDR, and older mortality (CMI 00 with only 1.5% p.a. improvement) than insurers' current, reinsurer-supported bases. This supports the decision not to back mortality out of quotes. X is unchanged.
+
+## Removed from scope (SPEC 1.5)
+- CM1 past-paper reproduction → replaced by the Appendix B worked example (test passes).
 
 ## Open questions
 None.

@@ -99,3 +99,32 @@ def sex_mix_sensitivity(basis: Basis, cells=(("LTA", 30, False), ("LTA", 40, Fal
                 "rate_needed": solve_unisex_rate(product, age, smoker, basis, male_share=m),
             })
     return pd.DataFrame(rows)
+
+
+def _model_monthly(row, basis: Basis) -> float:
+    """Model monthly premium for one quote row: unisex if sex = U, else single-sex. Implements SPEC §7.1."""
+    from lifemodel.pricing import solve_rate
+    if row["sex"] == "U":
+        rate = solve_unisex_rate("LTA", int(row["age"]), bool(row["smoker"]), basis, sa=row["sa"])
+    else:
+        rate = solve_rate("LTA", int(row["age"]), row["sex"], bool(row["smoker"]), basis, sa=row["sa"])
+    return premium_from_rate(rate, row["sa"], basis) / 12
+
+
+def market_reasonableness(quotes: pd.DataFrame, basis: Basis, x_grid=np.arange(0.30, 1.0001, 0.01)):
+    """Model vs market monthly premiums, plus the diagnostic implied X (never written to the basis). Implements SPEC §7.1."""
+    table = quotes.copy()
+    table["mid"] = (table["monthly_low"] + table["monthly_high"]) / 2
+    table["model"] = [_model_monthly(r, basis) for _, r in table.iterrows()]
+    table["model_to_mid"] = table["model"] / table["mid"]
+    table["within_range"] = table["model"].between(table["monthly_low"], table["monthly_high"])
+    table["flag_outside_0.5_2.0"] = ~table["model_to_mid"].between(0.5, 2.0)
+
+    def loss(x):
+        b = replace(basis, mortality_multiplier=x)
+        model = np.array([_model_monthly(r, b) for _, r in table.iterrows()])
+        return float((((model - table["mid"]) / table["mid"]) ** 2).sum())
+
+    losses = [loss(x) for x in x_grid]
+    implied_x = float(x_grid[int(np.argmin(losses))])
+    return table, implied_x

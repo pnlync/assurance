@@ -17,6 +17,6 @@ Not committed. Save each file into this folder with the name shown (case does no
   | 31 Dec 2025 | "Monthly Technical information 2026" → December 2025 | `EIOPA_RFR_20251231.zip` |
 
   https://www.eiopa.europa.eu/tools-and-data/risk-free-interest-rate-term-structures_en
-- [ ] **`market_quotes.csv`** — Irish comparison-site quotes (e.g. bonkers.ie, or a broker site); columns:
+- [x] **`market_quotes.csv`** — Irish comparison-site quotes (e.g. bonkers.ie, or a broker site); columns:
       `age, sex, smoker, sa, term, monthly_low, monthly_high, source, date`
       Suggested rows: ages 30 / 40 / 50 × smoker yes/no, male, SA 250000, term 20 (6 rows; add female rows if easy).

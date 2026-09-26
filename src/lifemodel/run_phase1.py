@@ -6,7 +6,10 @@ from lifemodel import charts
 from lifemodel.basis import load_basis
 from lifemodel.pricing import premium_from_rate, profit_test, solve_unisex_rate
 from lifemodel.portfolio import generate_portfolio, make_policy
-from lifemodel.pricing_analysis import apply_rates, margin_by_sa, rate_table, sensitivities, sex_mix_sensitivity
+import pandas as pd
+
+from lifemodel.pricing_analysis import (apply_rates, margin_by_sa, market_reasonableness, rate_table, sensitivities,
+                                       sex_mix_sensitivity)
 from lifemodel.projection import project
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,6 +46,10 @@ def main():
     mix = sex_mix_sensitivity(basis)
     mix.to_csv(TABLES / "sex_mix_sensitivity.csv", index=False)
     charts.sex_mix(mix, NOTE, basis.male_share)
+    quotes_path = ROOT / "data" / "raw" / "market_quotes.csv"
+    if quotes_path.exists():
+        check, implied_x = market_reasonableness(pd.read_csv(quotes_path), basis)
+        check.assign(implied_x_diagnostic=implied_x).to_csv(TABLES / "market_reasonableness.csv", index=False)
     print("Phase 1 outputs written to outputs/")
 
 
