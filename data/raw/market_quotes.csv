@@ -1,7 +1,7 @@
 age,sex,smoker,sa,term,monthly_low,monthly_high,source,date
-30,U,False,250000,20,12.44,15.55,Irish comparison site (owner-collected),2026-09-26
-30,U,True,250000,20,19.95,24.94,Irish comparison site (owner-collected),2026-09-26
-40,U,False,250000,20,21.98,27.47,Irish comparison site (owner-collected),2026-09-26
-40,U,True,250000,20,42.41,53.01,Irish comparison site (owner-collected),2026-09-26
-50,U,False,250000,20,52.90,65.13,Irish comparison site (owner-collected),2026-09-26
-50,U,True,250000,20,116.22,145.27,Irish comparison site (owner-collected),2026-09-26
+30,U,False,250000,20,12.44,15.55,bonkers.ie (owner-collected),2026-09-26
+30,U,True,250000,20,19.95,24.94,bonkers.ie (owner-collected),2026-09-26
+40,U,False,250000,20,21.98,27.47,bonkers.ie (owner-collected),2026-09-26
+40,U,True,250000,20,42.41,53.01,bonkers.ie (owner-collected),2026-09-26
+50,U,False,250000,20,52.90,65.13,bonkers.ie (owner-collected),2026-09-26
+50,U,True,250000,20,116.22,145.27,bonkers.ie (owner-collected),2026-09-26

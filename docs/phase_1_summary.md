@@ -57,7 +57,7 @@ Unisex rates per 1,000 SA (non-smoker / smoker):
 Lapse direction differs by cell: for LTA 50 higher lapses *raise* the margin (later years are loss-making and reserves are released on lapse with no surrender value), while for MP 35 they cut it (lost future profit). Level-term reserves are hump-shaped (peak ≈ €860 at policy year 14 for the reference life); MP reserves are zero throughout because level premiums exceed the falling cost of cover in every future year.
 
 ## Market reasonableness (§7.1)
-Six unisex quotes (LTA €250k, 20 years; owner-collected from an Irish comparison site, 26 Sep 2026), monthly:
+Six unisex quotes (LTA €250k, 20 years; owner-collected from bonkers.ie, 26 Sep 2026), monthly:
 
 | Age | Smoker | Market low–high | Model | Model ÷ mid |
 |---|---|---|---|---|
