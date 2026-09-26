@@ -11,7 +11,7 @@ Not committed. Save each file into this folder with the name shown (case does no
 
   | Reference date | Where on the EIOPA page | File |
   |---|---|---|
-  | 31 Dec 2022 | "Monthly Technical information 2023" → December 2022 | `December 2022.zip` |
+  | 31 Dec 2022 | "Monthly Technical information 2023" → December 2022 | `EIOPA_RFR_20221231.zip` (downloads as `December 2022.zip`; rename) |
   | 31 Dec 2023 | "Monthly Technical information 2024" → December 2023 | `EIOPA_RFR_20231231.zip` |
   | 31 Dec 2024 | "Monthly Technical information 2025" → December 2024 | `EIOPA_RFR_20241231.zip` |
   | 31 Dec 2025 | "Monthly Technical information 2026" → December 2025 | `EIOPA_RFR_20251231.zip` |
