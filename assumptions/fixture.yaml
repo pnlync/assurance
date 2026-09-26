@@ -30,5 +30,5 @@ pricing:                   # SPEC §4.3
   earned_rate: 0.03
   risk_discount_rate: 0.08
   target_margin: 0.10
-  unisex_female_share: 0.5  # EU unisex pricing (Test-Achats); matches the 50/50 book in SPEC §5
+  male_share: 0.60  # unisex pricing (Test-Achats): expected anti-selected mix 55% + prudence (SPEC §4.3)
   reference_sa: {LTA: 250000.0, MP: 300000.0}

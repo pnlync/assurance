@@ -37,5 +37,10 @@ Assumption files: `assumptions/fixture.yaml`, `assumptions/basis_2022.yaml`.
 ## Open questions
 None.
 
-## Decision — unisex pricing (SPEC 1.3)
-Irish quote sites have no sex field: since 21 Dec 2012 EU insurers must price unisex (CJEU C-236/09, Test-Achats). Rates are now solved for a 50/50 male/female mix (`solve_unisex_rate`); all valuation and experience work stays sex-specific. First real-basis result (LTA, €250k, 20 years): the unisex price leaves men at a margin of about −5% to +4% and women at about +16% to +25%, against the 10% target. Consequence for IFRS 17: male-only groups could be onerous, so cells are not split by sex (IFRS 17 para 20). The gender mix of new business becomes a pricing risk.
+## Decision — unisex pricing (SPEC 1.3–1.4)
+- Irish quote sites have no sex field: since 21 Dec 2012 EU insurers must price unisex (CJEU C-236/09, Test-Achats). Rates are solved on a pooled male/female margin (total NPV ÷ total EPV of premiums, `solve_unisex_rate`); valuation and experience work stay sex-specific. Observed risk characteristic ≠ permitted pricing factor.
+- Male share: the unisex price anti-selects towards men, so pricing assumes 60% male (book 55% + prudence), not 50/50. Illustrative judgement.
+- Cross-subsidy at the 60% pricing mix (LTA €250k, 20y, 40 NS, €35.31/month): men earn well below 10%, women well above.
+- Sex-mix sensitivity (pooled margin at the priced rate), male share 30% / 50% / 60% / 70%: age 30 NS 13.6 / 11.2 / 10.0 / 8.8%; age 50 NS 18.6 / 12.9 / 10.0 / 7.1%. Older ages are more exposed because the male/female mortality gap widens.
+- The male and female margins happen to look symmetric around 10% only because their EPVs of premiums differ by under 1% (lapses, not deaths, drive persistency); the calibration is pooled, not a simple average.
+- IFRS 17: cells are not split by sex, using the para 20 option (permitted, not required; not by analogy). Onerousness is judged on FCF + RA, not on the pricing margin.

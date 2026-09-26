@@ -8,6 +8,7 @@ SEED = 2023
 TERM = 20
 MP_LOAN_RATE = 0.04
 ISSUE_DATE = "2023-01-01"
+MALE_SHARE = 0.55  # expected anti-selected mix under unisex pricing (SPEC §4.3, §5)
 
 
 def make_policy(product, issue_age, sex, smoker, sa, premium=np.nan, term=TERM, loan_rate=MP_LOAN_RATE):
@@ -33,7 +34,7 @@ def generate_portfolio(n=N_POLICIES, seed=SEED):
     rng = np.random.default_rng(seed)
     product = np.where(rng.random(n) < 0.5, "LTA", "MP")
     issue_age = rng.integers(25, 56, size=n)  # 25–55 inclusive
-    sex = np.where(rng.random(n) < 0.5, "M", "F")
+    sex = np.where(rng.random(n) < MALE_SHARE, "M", "F")
     smoker = rng.random(n) < 0.20
     channel = np.where(rng.random(n) < 0.70, "broker", "direct")
 

@@ -97,6 +97,7 @@ def test_portfolio_generator():
     assert (book["sa"] % 1_000 == 0).all()
     assert mp["loan_rate"].eq(0.04).all() and lta["loan_rate"].isna().all()
     assert abs(book["smoker"].mean() - 0.20) < 0.01
+    assert abs((book["sex"] == "M").mean() - 0.55) < 0.01
     assert abs((book["channel"] == "broker").mean() - 0.70) < 0.01
     assert generate_portfolio().equals(book)  # reproducible
 
@@ -110,9 +111,9 @@ def test_full_book_valuation_speed(fixture_basis, flat3):
 
 
 def test_unisex_rate_between_female_and_male(fixture_basis):
-    """Unisex rate lies between the single-sex rates, and the weighted margin hits the target (SPEC §7.2)."""
+    """Unisex rate lies between the single-sex rates and the pooled margin hits the target (SPEC §7.2)."""
     from lifemodel.portfolio import make_policy
-    from lifemodel.pricing import premium_from_rate, solve_rate, solve_unisex_rate
+    from lifemodel.pricing import pooled_margin, premium_from_rate, solve_rate, solve_unisex_rate
     b = fixture_basis
     male, female = solve_rate("LTA", 40, "M", False, b), solve_rate("LTA", 40, "F", False, b)
     unisex = solve_unisex_rate("LTA", 40, False, b)
@@ -120,5 +121,10 @@ def test_unisex_rate_between_female_and_male(fixture_basis):
     p = premium_from_rate(unisex, 250_000, b)
     m = profit_test(make_policy("LTA", 40, "M", False, 250_000, p), b)
     f = profit_test(make_policy("LTA", 40, "F", False, 250_000, p), b)
-    assert (m.npv + f.npv) / (m.epv_premiums + f.epv_premiums) == pytest.approx(b.target_margin, abs=1e-9)
+    pooled = (b.male_share * m.npv + (1 - b.male_share) * f.npv) / (
+        b.male_share * m.epv_premiums + (1 - b.male_share) * f.epv_premiums)
+    assert pooled == pytest.approx(b.target_margin, abs=1e-9)
     assert m.margin < b.target_margin < f.margin  # men are cross-subsidised by women
+    # more men than priced for → lower margin
+    assert pooled_margin("LTA", 40, False, p, b, male_share=0.70) < b.target_margin < pooled_margin(
+        "LTA", 40, False, p, b, male_share=0.50)

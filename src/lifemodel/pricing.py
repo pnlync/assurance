@@ -114,21 +114,25 @@ def solve_rate(product, issue_age, sex, smoker, basis: Basis, sa=None) -> float:
     return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
 
 
-def solve_unisex_rate(product, issue_age, smoker, basis: Basis, sa=None) -> float:
-    """Unisex rate per 1,000 SA: the female-share-weighted male + female reference policies earn the target margin.
+def pooled_margin(product, issue_age, smoker, premium, basis: Basis, sa=None, male_share=None) -> float:
+    """Pooled margin of a male + female pair at one unisex premium, weighted by male share m.
 
-    margin = [(1 − f) NPV_M + f NPV_F] / [(1 − f) EPV_M + f EPV_F]. Implements SPEC §7.2, §4.3 (unisex pricing).
+    margin = [m NPV_M + (1 − m) NPV_F] / [m EPV_M + (1 − m) EPV_F]. Implements SPEC §7.2, §7.4.
     """
     sa = basis.reference_sa[product] if sa is None else sa
-    f = basis.unisex_female_share
+    m = basis.male_share if male_share is None else male_share
+    male = profit_test(make_policy(product, issue_age, "M", smoker, sa, premium), basis)
+    female = profit_test(make_policy(product, issue_age, "F", smoker, sa, premium), basis)
+    return (m * male.npv + (1 - m) * female.npv) / (m * male.epv_premiums + (1 - m) * female.epv_premiums)
+
+
+def solve_unisex_rate(product, issue_age, smoker, basis: Basis, sa=None, male_share=None) -> float:
+    """Unisex rate per 1,000 SA at which the pooled margin equals the target. Implements SPEC §7.2, §4.3."""
+    sa = basis.reference_sa[product] if sa is None else sa
 
     def margin_gap(rate):
         premium = premium_from_rate(rate, sa, basis)
-        m = profit_test(make_policy(product, issue_age, "M", smoker, sa, premium), basis)
-        w = profit_test(make_policy(product, issue_age, "F", smoker, sa, premium), basis)
-        npv = (1 - f) * m.npv + f * w.npv
-        epv = (1 - f) * m.epv_premiums + f * w.epv_premiums
-        return npv / epv - basis.target_margin
+        return pooled_margin(product, issue_age, smoker, premium, basis, sa, male_share) - basis.target_margin
 
     return brentq(margin_gap, 0.0, 200.0, xtol=1e-12)
 

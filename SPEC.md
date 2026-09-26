@@ -1,7 +1,7 @@
 # Life Protection Model — Build Specification
 
-Version 1.3 · 26 Sep 2026 · Owner: Tom Zhang
-Changes in 1.3: unisex pricing (EU gender directive, Test-Achats) in §4.3, §7.1, §7.2; IFRS 17 cells not split by sex (para 20) in §10.1. Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
+Version 1.4 · 26 Sep 2026 · Owner: Tom Zhang
+Changes in 1.4: pricing male share 60% with anti-selection rationale and a mix sensitivity (§4.3, §7.4); book 55% male (§5); IFRS 17 para 20 wording (§10.1). Changes in 1.3: unisex pricing (EU gender directive, Test-Achats) in §4.3, §7.1, §7.2; IFRS 17 cells not split by sex (para 20) in §10.1. Changes in 1.2: raw file names in §3 match the actual downloads. Changes in 1.1: mortality level X set by documented judgement, market quotes used only as a reasonableness check (§4.1, §7.1); IFRS 17 portfolios split into LTA and MP (§10.1); Python 3.12 (§14).
 Audience: the AI coding agent that implements the project, and the owner who reviews it.
 Companion: the owner's Chinese guide ("Life Protection Project Guide") explains the concepts; this file defines exactly what to build.
 
@@ -106,7 +106,8 @@ Parsing:
 
 **4.3 Pricing economics:** earned rate i = 3.0% flat; risk discount rate RDR = 8.0% flat; target profit margin 10%.
 
-**Unisex pricing.** Since 21 Dec 2012 EU insurers may not use sex as a pricing factor (CJEU case C-236/09 Test-Achats; Directive 2004/113/EC Art. 5(2) invalid). Premium rates are therefore unisex; valuation, reserving, Solvency II, IFRS 17 and the experience study still use sex-specific mortality because that is the actual risk. Pricing assumes a female share of 50% (`pricing.unisex_female_share`, matching §5).
+**Unisex pricing.** Since 21 Dec 2012 EU insurers may not use sex as a pricing factor (CJEU case C-236/09 Test-Achats; Directive 2004/113/EC Art. 5(2) invalid). Premium rates are therefore unisex; valuation, reserving, Solvency II, IFRS 17 and the experience study still use sex-specific mortality because that is the actual risk. Pricing assumes a male share of new business of **60%** (`pricing.male_share`). Rationale: under a unisex price men get cover below their risk cost and women above it, so the mix anti-selects towards men; 60% = expected mix of the book (55% male, §5) plus a prudence margin. Illustrative judgement — no Irish market data on sex mix; tested in §7.4.
+The policy data keep the observed `sex` (M/F): the observed risk characteristic is not the same thing as a permitted pricing factor.
 
 **4.4 IFRS 17 basis:** §4.1 excluding overhead (only directly attributable expenses). Discount curve: EIOPA RFR without VA, illiquidity premium 0. Locked-in curve L = 2022-12-31. RA per §10.3. Coverage units per §10.4. No OCI option (all insurance finance income/expense in P&L).
 
@@ -147,7 +148,7 @@ N = 50,000, seed 2023. Columns:
 | policy_id | TL000001 … TL050000 |
 | product | LTA / MP, 50% each |
 | issue_age | integer, uniform 25–55 inclusive |
-| sex | M / F, 50% each |
+| sex | M 55% / F 45% (expected anti-selected mix under unisex pricing, §4.3) |
 | smoker | True with probability 20% |
 | channel | broker 70%, direct 30% |
 | sa | LTA: lognormal, median 250,000, σ 0.5, clipped to [50,000, 1,000,000]; MP (initial loan): lognormal, median 300,000, σ 0.4, clipped to [100,000, 800,000]; both rounded to the nearest 1,000 |
@@ -175,7 +176,7 @@ Sum assured schedule: LTA S_t = SA. MP S_t = SA × (1 − v^(n−t)) / (1 − v^
 
 **7.1 Market reasonableness check** (does not change the basis). For each row of `market_quotes.csv`, compute the model's monthly premium (annual / 12) at the 10% target margin for an LTA of that age, smoker status and SA (unisex rate per §7.2 when sex = U; sex-specific only if a quote row is sex-specific), using X from §4.1. Report model, low, high, mid = (monthly_low + monthly_high) / 2, model / mid, and whether model lies within [low, high]. Also report, as a diagnostic only, the implied X that would minimise Σ ((model − mid) / mid)² on a grid 0.30–1.00 (step 0.01); it is never written to the basis. Rationale (state it in the phase summary): retail premiums also reflect underwriting, commission, expenses, margins and insurer strategy, so a quote cannot identify mortality uniquely. Flag for the owner if any model / mid lies outside 0.5–2.0.
 
-**7.2 Rate table (unisex).** For each cell (product, smoker, issue age 25–55), solve the rate so that the combined profit margin of a male and a female reference policy, weighted by the female share f, equals 10%: margin = [(1 − f)·NPV_M + f·NPV_F] / [(1 − f)·EPV_M + f·EPV_F] (LTA SA 250,000; MP initial SA 300,000), fee 60. The single-sex solver is kept for the golden fixtures F1/F2 (§13.3), which are sex-specific by construction. Premium of each policy = rate(cell) × SA / 1000 + 60. Use `scipy.optimize.brentq` with xtol 1e-12.
+**7.2 Rate table (unisex).** For each cell (product, smoker, issue age 25–55), solve the rate so that the pooled profit margin of a male and a female reference policy, weighted by the male share m, equals 10%: margin = [m·NPV_M + (1 − m)·NPV_F] / [m·EPV_M + (1 − m)·EPV_F] (total NPV over total EPV of premiums — not an average of the two margins) (LTA SA 250,000; MP initial SA 300,000), fee 60. The single-sex solver is kept for the golden fixtures F1/F2 (§13.3), which are sex-specific by construction. Premium of each policy = rate(cell) × SA / 1000 + 60. Use `scipy.optimize.brentq` with xtol 1e-12.
 
 **7.3 Profit test** (per policy, pricing basis including overhead):
 - Reserves: _tV = max(0, V^R_t) for t = 1 … n−1, V^R from the reserving basis (§4.2) at 2.5% flat; _0V = _nV = 0.
@@ -186,7 +187,7 @@ Sum assured schedule: LTA S_t = SA. MP S_t = SA × (1 − v^(n−t)) / (1 − v^
 - Discounted payback = first time t+1 at which the cumulative discounted Π ≥ 0.
 - Also report the NPV with no reserves (all _tV = 0) to show the cost of holding reserves.
 
-**7.4 Outputs.** Rate table CSV; charts for the reference LTA and MP (cash flows by year; reserves; profit signature); profit margin by SA band with and without the fee; sensitivity table (mortality ±10%, lapse ±20%, expenses +10%, earned rate ±1pp, RDR ±2pp) showing the change in margin at fixed premium.
+**7.4 Outputs.** Rate table CSV; charts for the reference LTA and MP (cash flows by year; reserves; profit signature); profit margin by SA band with and without the fee; sensitivity table (mortality ±10%, lapse ±20%, expenses +10%, earned rate ±1pp, RDR ±2pp) showing the change in margin at fixed premium; **sex-mix sensitivity**: pooled margin of the unisex rates at male share 30%, 40%, 50%, 60%, 70% (chart: male share → margin, reference cells), plus the unisex rate that would be needed at each mix.
 
 **7.5 CM1 check.** Provide `profit_test_exam_mode(...)` that accepts an explicitly supplied basis and reserve vector. The owner supplies one IFoA CM1 / CT5 past-paper term-assurance profit test and its examiners' report answer; reproduce the profit vector, profit signature and NPV.
 
@@ -249,7 +250,7 @@ Assert 0.3958 ≤ RM_new / RM_old ≤ 0.7917.
 
 ## 10. IFRS 17 (`src/lifemodel/ifrs17.py`)
 
-**10.1 Level of aggregation.** Two portfolios — LTA and MP (different products, managed separately; IFRS 17 para 14) — each with one annual cohort, 2023. Within each portfolio, cells = smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Cells are not split by sex: under unisex pricing, male and female contracts would fall into different groups only because law constrains the price, so IFRS 17 para 20 allows them in the same group (report the male/female CSM split as a disclosure). Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups are formed within each portfolio (so up to 6 groups: LTA-G1…G3, MP-G1…G3):
+**10.1 Level of aggregation.** Two portfolios — LTA and MP (different products, managed separately; IFRS 17 para 14) — each with one annual cohort, 2023. Within each portfolio, cells = smoker × issue-age band (25–34, 35–44, 45–55) × SA band (§8.2). Cells are not split by sex. Rationale: IFRS 17 groups by portfolio, annual cohort and profitability (paras 14–19), not by sex; but because unisex pricing leaves men much less profitable than women, a profitability assessment at a finer level could put male contracts into a different (possibly onerous) group. Para 20 permits — it does not require — keeping contracts in the same group when the only reason they would fall into different groups is that law or regulation specifically constrains the entity's practical ability to set a different price for policyholders with different characteristics; it must not be applied by analogy to other items. The model elects this option (an accounting policy choice, disclosed) for sex only; all other characteristics are still split. Report the male/female split of FCF, RA and CSM as a disclosure. Note that onerousness is tested on FCF + RA on the IFRS 17 basis, not on the pricing margin: a male contract with a small positive pricing margin can still be onerous once the RA is deducted. Profitability is assessed per cell (IFRS 17 para 17 allows sets of contracts). Groups are formed within each portfolio (so up to 6 groups: LTA-G1…G3, MP-G1…G3):
 - G1 onerous: BE_cell + RA_cell > 0 at initial recognition;
 - G2 no significant possibility of becoming onerous: not G1, and BE_cell under the combined stress (q × 1.15 and w × 1.5) + RA_cell < 0;
 - G3 remaining.
